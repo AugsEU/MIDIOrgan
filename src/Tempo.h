@@ -6,7 +6,7 @@
 
 void SetTempo(uint16_t tempo);
 
-bool On4Note(uTimeMs prevTime, uTimeMs time); // Quarter note
-bool On8Note(uTimeMs prevTime, uTimeMs time); // Quarter note
+bool On4Note(); // Quarter note
+bool On8Note(); // Eight note
 
 #endif // TEMPO_H

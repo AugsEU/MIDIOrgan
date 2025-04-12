@@ -1,4 +1,5 @@
 #include <Tempo.h>
+#include <Globals.h>
 
 uTimeMs gTempoInterval; // Quarter note interval in milliseconds
 
@@ -10,20 +11,20 @@ void SetTempo(uint16_t tempo)
 
 
 /// @brief Did we just pass a quarter note?
-bool On4Note(uTimeMs prevTime, uTimeMs time)
+bool On4Note()
 {
-    unsigned long prevQuarterNote = prevTime / gTempoInterval;
-    unsigned long nowQuarterNote = time / gTempoInterval;
+    unsigned long prevQuarterNote = gPrevTime / gTempoInterval;
+    unsigned long nowQuarterNote = gTime / gTempoInterval;
 
     return nowQuarterNote > prevQuarterNote;
 }
 
 
 /// @brief Did we just pass an eigth note?
-bool On8Note(uTimeMs prevTime, uTimeMs time)
+bool On8Note()
 {
-    unsigned long prevEightNote = (prevTime * 2) / gTempoInterval;
-    unsigned long nowEightNote = (time * 2) / gTempoInterval;
+    unsigned long prevEightNote = (gPrevTime * 2) / gTempoInterval;
+    unsigned long nowEightNote = (gTime * 2) / gTempoInterval;
 
     return nowEightNote > prevEightNote;
 }

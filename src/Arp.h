@@ -16,11 +16,6 @@ enum ArpMode
     ARP_UP_DOWN_SPEC,
 };
 
-struct Arp
-{
-    ArpMode mMode = ARP_OFF;
-
-    //void PlayNotes();
-};
+void PlayArp(ArpMode mode);
 
 #endif // ARP_H

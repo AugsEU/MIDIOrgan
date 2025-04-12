@@ -12,11 +12,10 @@
 /// ===================================================================================
 /// Members
 /// ===================================================================================
-TimeInfo gTime;
-TimeInfo gPrevTime;
+uTimeMs gTime;
+uTimeMs gPrevTime;
 
-Arp gArp;
-uint8_t gArpStep = 0;
+ArpMode gArpMode;
 
 StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 NotePressInfo gNoteStates[NUM_NOTES];
@@ -29,10 +28,10 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 //-- Arduino intrinsic. Prog entry point.
 void setup() 
 {
-	gTime = TimeInfo();
+	gTime = millis();
 	SetTempo(DEFAULT_TEMPO);
 
-	gArp.mMode = ArpMode::ARP_UP;
+	gArpMode = ArpMode::ARP_UP;
 
 	MIDI.begin(MIDI_CHANNEL_OFF);
 
@@ -106,7 +105,7 @@ void PlayNotes()
 		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
 		
 		bool prevPressed = gNoteStates[i].mPressed;
-		gNoteStates[i].ChangeState(vPinState, gTime.mTimeMs);
+		gNoteStates[i].ChangeState(vPinState, gTime);
 
 		uint8_t noteNum = VirtualPinToNote(i);
 
@@ -129,84 +128,23 @@ void PlayNotes()
 	}
 }
 
-void PlayArpUp()
-{
-    bool note4 = On4Note(gPrevTime.mTimeMs, gTime.mTimeMs);
-    bool note8 = On8Note(gPrevTime.mTimeMs, gTime.mTimeMs);
-
-    bool noteOn = note4;
-    bool noteOff = !note4 && note8;
-
-    if (!note4 && !note8)
-    {
-        return;
-    }
-
-    uint8_t numPressed = 0;
-
-	for (int i = 0; i < NUM_NOTES; i++)
-	{
-		uint8_t vPinIdx = NOTES_VPIN_START + i;
-		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
-		uint8_t noteNum = VirtualPinToNote(i);
-		
-		gNoteStates[i].ChangeState(vPinState, gTime.mTimeMs);
-
-		bool pressed = gNoteStates[i].mPressed;
-
-		if (pressed)
-		{
-            if (numPressed == gArpStep)
-            {
-                if (noteOn)
-                {
-					MIDI.sendNoteOn(noteNum, 100, 1); 
-                }
-                else if (noteOff)
-                {
-                    MIDI.sendNoteOff(noteNum, 100, 1);
-                }
-            }
-            numPressed++;
-		}
-	}
-
-    if (noteOff)
-    {
-        gArpStep++;
-    }
-
-	if (gArpStep >= numPressed)
-	{
-		gArpStep = 0;
-	}
-}
-
 
 //-- Arduino intrinsic. Runs in loop.
 void loop()
 {
 	gPrevTime = gTime;
-	gTime.PollTime();
+	gTime = millis();
 
 	ReadAllPins();
 
-	if (gArp.mMode != ARP_OFF)
+	if (gArpMode != ARP_OFF)
 	{
-		PlayArpUp(); // Temp test
+		PlayArp(gArpMode);
 	}
 	else
 	{
 		PlayNotes();
 	}
-
-	//char msgBuff[1024];
-	//sprintf(msgBuff, "Reg 0x%" PRIx32 " 0x%" PRIx32, lower, upper);
-	// for (int i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)
-	// {
-	// 	Reg
-	// }
-	//Serial.println(msgBuff);
 
 	// for (uint8_t i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)
 	// {
@@ -215,11 +153,6 @@ void loop()
 	// 		Serial.println(gVirtualMuxPins[i].mState);
 	// 	}
 	// }
-
-	// MIDI.sendNoteOn(80, 100, 1);
-	// delay(1000);
-	// MIDI.sendNoteOff(80, 100, 1);
-	// delay(1000);
 
 	//int timeTaken = millis() - mTime.mTimeMs;
 	//Serial.println("timeTaken");
