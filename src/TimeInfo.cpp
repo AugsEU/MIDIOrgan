@@ -4,5 +4,4 @@
 void TimeInfo::PollTime()
 {
     mTimeMs = millis();
-    mTimeMsDecimal = (double)mTimeMs;
 }

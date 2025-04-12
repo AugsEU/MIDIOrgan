@@ -1,7 +1,15 @@
+#include <Arduino.h>
+
+#ifndef TIME_INFO_H
+#define TIME_INFO_H
+
+using uTimeMs = unsigned long; // Unsigned time in milliseconds type.
+
 struct TimeInfo
 {
-    unsigned long mTimeMs = 0;
-    double mTimeMsDecimal = 0.0;
+    uTimeMs mTimeMs = 0;
 
     void PollTime();
 };
+
+#endif // TIME_INFO_H

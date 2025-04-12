@@ -4,34 +4,10 @@
 #include <TimeInfo.h>
 #include <Debug.h>
 #include <VirtualPinToNote.h>
-
-/// ===================================================================================
-/// Constants
-/// ===================================================================================
-
-constexpr uint8_t PIN_MUX_START = 23;
-constexpr uint8_t NUM_MUX_PIN = 11;
-constexpr uint8_t PIN_MUX_S0 = 51;
-constexpr uint8_t PIN_MUX_S1 = 52;
-constexpr uint8_t PIN_MUX_S2 = 53;
-
-constexpr size_t NUM_VIRTUAL_MUX_PIN = NUM_MUX_PIN * 8; // 8-to-1 mux chips
-
-constexpr uint8_t VPIN_PRESS_THRESH = 16;
-constexpr uint8_t VPIN_PRESS_THRESH_MAX = 32;
-
-constexpr size_t NOTES_VPIN_START = 0;
-constexpr uint8_t NUM_NOTES = 88;
-constexpr uint8_t NOTE_START = 10;
-
-constexpr uint16_t DEFAULT_TEMPO_INTERVAL = 500; // 120BPM
-
-// Assert constants make sense
-static_assert(NUM_NOTES + NOTES_VPIN_START <= NUM_VIRTUAL_MUX_PIN, 
-								"Not enough vpins for notes.");
-static_assert((int)NOTE_START + (int)NUM_NOTES < 128, "Note index exceeds midi maximum");
-
-
+#include <StableState.h>
+#include <Tempo.h>
+#include <Arp.h>
+#include <Constants.h>
 
 /// ===================================================================================
 /// Members
@@ -39,14 +15,11 @@ static_assert((int)NOTE_START + (int)NUM_NOTES < 128, "Note index exceeds midi m
 TimeInfo gTime;
 TimeInfo gPrevTime;
 
-uint8_t gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
+Arp gArp;
+uint8_t gArpStep = 0;
+
+StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 NotePressInfo gNoteStates[NUM_NOTES];
-
-unsigned long gTempoInterval = DEFAULT_TEMPO_INTERVAL;
-
-
-
-
 
 /// ===================================================================================
 /// Setup
@@ -57,7 +30,9 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 void setup() 
 {
 	gTime = TimeInfo();
-	gTempoInterval = DEFAULT_TEMPO_INTERVAL;
+	SetTempo(DEFAULT_TEMPO);
+
+	gArp.mMode = ArpMode::ARP_UP;
 
 	MIDI.begin(MIDI_CHANNEL_OFF);
 
@@ -75,12 +50,6 @@ void setup()
 		pinMode(pinNum, INPUT_PULLUP);
 	}
 
-	// Init virtual pins
-	for (uint8_t i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)
-	{
-		gVirtualMuxPins[i] = false;
-	}
-
 	for (uint8_t i = 0; i < NUM_NOTES; i++)
 	{
 		gNoteStates[i] = NotePressInfo();
@@ -94,13 +63,6 @@ void setup()
 /// ===================================================================================
 /// Update
 /// ===================================================================================
-
-
-bool VirtualPinTrue(uint8_t vpinIdx)
-{
-	return gVirtualMuxPins[vpinIdx] >= 0x80;
-}
-
 void ReadVirtualPins()
 {
 	uint8_t idx = 0;
@@ -114,32 +76,13 @@ void ReadVirtualPins()
 			{
 				digitalWrite(PIN_MUX_S2, s2 ? HIGH : LOW);
 
-				while(s2 && digitalRead(PIN_MUX_S2) == LOW)
-				{
-					//// TEMP HACK
-				}
+				delayMicroseconds(5);
 
 				for (uint8_t i = 0; i < NUM_MUX_PIN; i++)
 				{
 					uint8_t pinNum = i + PIN_MUX_START;
 					uint8_t pinState = digitalRead(pinNum);
-
-					if (pinState == HIGH && gVirtualMuxPins[idx] > 0)
-					{
-						gVirtualMuxPins[idx]--;
-						if (gVirtualMuxPins[idx] == 0x80)
-						{
-							gVirtualMuxPins[idx] = 0;
-						}
-					}
-					else if(pinState == LOW && gVirtualMuxPins[idx] < VPIN_PRESS_THRESH_MAX + 0x80)
-					{
-						gVirtualMuxPins[idx]++;
-						if (gVirtualMuxPins[idx] == VPIN_PRESS_THRESH)
-						{
-							gVirtualMuxPins[idx] = VPIN_PRESS_THRESH + 0x80;
-						}
-					}
+					gVirtualMuxPins[idx].UpdateState(pinState == LOW);
 					idx++;
 				}
 			}	
@@ -154,13 +97,13 @@ void ReadAllPins()
 }
 
 
-//-- Update note states array.
-void UpdateNoteStates()
+//-- Update note states array, send midi commands.
+void PlayNotes()
 {
 	for (int i = 0; i < NUM_NOTES; i++)
 	{
 		uint8_t vPinIdx = NOTES_VPIN_START + i;
-		bool vPinState = VirtualPinTrue(vPinIdx);
+		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
 		
 		bool prevPressed = gNoteStates[i].mPressed;
 		gNoteStates[i].ChangeState(vPinState, gTime.mTimeMs);
@@ -186,6 +129,59 @@ void UpdateNoteStates()
 	}
 }
 
+void PlayArpUp()
+{
+    bool note4 = On4Note(gPrevTime.mTimeMs, gTime.mTimeMs);
+    bool note8 = On8Note(gPrevTime.mTimeMs, gTime.mTimeMs);
+
+    bool noteOn = note4;
+    bool noteOff = !note4 && note8;
+
+    if (!note4 && !note8)
+    {
+        return;
+    }
+
+    uint8_t numPressed = 0;
+
+	for (int i = 0; i < NUM_NOTES; i++)
+	{
+		uint8_t vPinIdx = NOTES_VPIN_START + i;
+		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
+		uint8_t noteNum = VirtualPinToNote(i);
+		
+		gNoteStates[i].ChangeState(vPinState, gTime.mTimeMs);
+
+		bool pressed = gNoteStates[i].mPressed;
+
+		if (pressed)
+		{
+            if (numPressed == gArpStep)
+            {
+                if (noteOn)
+                {
+					MIDI.sendNoteOn(noteNum, 100, 1); 
+                }
+                else if (noteOff)
+                {
+                    MIDI.sendNoteOff(noteNum, 100, 1);
+                }
+            }
+            numPressed++;
+		}
+	}
+
+    if (noteOff)
+    {
+        gArpStep++;
+    }
+
+	if (gArpStep >= numPressed)
+	{
+		gArpStep = 0;
+	}
+}
+
 
 //-- Arduino intrinsic. Runs in loop.
 void loop()
@@ -194,7 +190,15 @@ void loop()
 	gTime.PollTime();
 
 	ReadAllPins();
-	UpdateNoteStates();
+
+	if (gArp.mMode != ARP_OFF)
+	{
+		PlayArpUp(); // Temp test
+	}
+	else
+	{
+		PlayNotes();
+	}
 
 	//char msgBuff[1024];
 	//sprintf(msgBuff, "Reg 0x%" PRIx32 " 0x%" PRIx32, lower, upper);
@@ -204,11 +208,11 @@ void loop()
 	// }
 	//Serial.println(msgBuff);
 
-	// for (int i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)
+	// for (uint8_t i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)
 	// {
-	// 	if(gVirtualMuxPins[i] > 0)
+	// 	if(gVirtualMuxPins[i].IsActive())
 	// 	{
-	// 		Serial.println(i);
+	// 		Serial.println(gVirtualMuxPins[i].mState);
 	// 	}
 	// }
 

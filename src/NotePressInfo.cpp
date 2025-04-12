@@ -3,8 +3,8 @@
 /// ===================================================================================
 /// Constants
 /// ===================================================================================
-constexpr int NOTE_OFF_DELAY_TIME_MS = 80;
-constexpr int NOTE_ON_DELAY_TIME_MS = 20;
+constexpr int NOTE_OFF_DELAY_TIME_MS = 40;
+constexpr int NOTE_ON_DELAY_TIME_MS = 40;
 
 
 /// ===================================================================================
@@ -12,7 +12,7 @@ constexpr int NOTE_ON_DELAY_TIME_MS = 20;
 /// ===================================================================================
 
 //-- Change state of note
-void NotePressInfo::ChangeState(bool inputPin, unsigned long time)
+void NotePressInfo::ChangeState(bool inputPin, uTimeMs time)
 {
     if (time < mUpdatedTime)
     {
