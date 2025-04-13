@@ -6,7 +6,6 @@
 
 void SetTempo(uint16_t tempo);
 
-bool On4Note(); // Quarter note
-bool On8Note(); // Eight note
+bool On4Note(uint8_t division = 1); // Quarter note and divisions
 
 #endif // TEMPO_H

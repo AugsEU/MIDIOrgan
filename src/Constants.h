@@ -19,7 +19,7 @@ constexpr size_t NOTES_VPIN_START = 0;
 constexpr uint8_t NUM_NOTES = 88;
 constexpr uint8_t NOTE_START = 10;
 
-constexpr uint16_t DEFAULT_TEMPO = 120;
+constexpr uint16_t DEFAULT_TEMPO = 150;
 
 // Assert constants make sense
 static_assert(NUM_NOTES + NOTES_VPIN_START <= NUM_VIRTUAL_MUX_PIN, 

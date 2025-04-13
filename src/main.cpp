@@ -15,7 +15,7 @@
 uTimeMs gTime;
 uTimeMs gPrevTime;
 
-ArpMode gArpMode;
+ArpMode gArpMode = ArpMode::ARP_OFF;
 
 StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 NotePressInfo gNoteStates[NUM_NOTES];
@@ -31,7 +31,7 @@ void setup()
 	gTime = millis();
 	SetTempo(DEFAULT_TEMPO);
 
-	gArpMode = ArpMode::ARP_UP;
+	gArpMode = ArpMode::ARP_UP_DOWN;
 
 	MIDI.begin(MIDI_CHANNEL_OFF);
 
