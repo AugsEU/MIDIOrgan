@@ -4,8 +4,15 @@
 #include <Tempo.h>
 #include <FixedArray.h>
 
+/// ===================================================================================
+/// Constants
+/// ===================================================================================
 constexpr uint8_t ARP_NO_NOTE = 255;
 
+/// ===================================================================================
+/// Members
+/// ===================================================================================
+ArpMode gArpMode = ArpMode::ARP_OFF;
 bool gGoingUp = true;
 
 uTimeMs gArpPlayingNoteTime = 0;
@@ -14,9 +21,36 @@ uint8_t gArpPlayingNote = ARP_NO_NOTE;
 FixedArray<uint8_t, 8> gPressedNotesAbovePlayed;
 FixedArray<uint8_t, 8> gPressedNotesBelowPlayed;
 
-void ChooseNextNote(ArpMode mode, uint8_t lowestNote, uint8_t highestNote);
+/// ===================================================================================
+/// Private function decl
+/// ===================================================================================
+void ChooseNextNote(uint8_t lowestNote, uint8_t highestNote);
+void ResetState();
 
-void PlayArp(ArpMode mode)
+
+/// ===================================================================================
+/// Public functions
+/// ===================================================================================
+
+/// @brief Is the arp enabled?
+bool ArpEnabled()
+{
+	return gArpMode != ArpMode::ARP_OFF;
+}
+
+
+
+/// @brief Set arp mode.
+void SetArpMode(ArpMode mode)
+{
+	ResetState();
+	gArpMode = mode;
+}
+
+
+
+/// @brief Update notes and send out arp notes to midi
+void PlayArp()
 {
 	// First inspect pressed keys.
 	uint8_t numPressed = 0;
@@ -79,12 +113,12 @@ void PlayArp(ArpMode mode)
 		if (numPressed == 0)
 		{
 			gArpPlayingNote = ARP_NO_NOTE;
-			gGoingUp = true;
+			ResetState();
 		}
 		// Go to next note on note off or we have none.
 		else if (noteOff || gArpPlayingNote == ARP_NO_NOTE)
 		{
-			ChooseNextNote(mode, lowestNote, highestNote);
+			ChooseNextNote(lowestNote, highestNote);
 		}
 	}
 
@@ -94,18 +128,20 @@ void PlayArp(ArpMode mode)
 	}
 }
 
-
+/// ===================================================================================
+/// Private functions
+/// ===================================================================================
 
 /// @brief Decide which note to set gArpPlayingNote to.
-void ChooseNextNote(ArpMode mode, uint8_t lowestNote, uint8_t highestNote)
+void ChooseNextNote(uint8_t lowestNote, uint8_t highestNote)
 {
 	long r = random(0,10);
 	size_t aboveSize = gPressedNotesAbovePlayed.size();
 	size_t belowSize = gPressedNotesBelowPlayed.size();
 
-	switch (mode)
+	switch (gArpMode)
 	{
-	case ARP_RND:
+	case ARP_RND: // Play somewhat randomly
 		if (r < 5 && aboveSize > 0) // Go above
 		{
 			r = random(0, aboveSize);
@@ -121,7 +157,7 @@ void ChooseNextNote(ArpMode mode, uint8_t lowestNote, uint8_t highestNote)
 			gArpPlayingNote = r % 2 ? lowestNote : highestNote;
 		}
 		break;
-	case ARP_UP:
+	case ARP_UP: // Play ascending notes
 		if (gArpPlayingNote == ARP_NO_NOTE)
 		{
 			gArpPlayingNote = lowestNote;
@@ -140,7 +176,41 @@ void ChooseNextNote(ArpMode mode, uint8_t lowestNote, uint8_t highestNote)
 			}
 		}
 		break;
-	case ARP_DOWN:
+	case ARP_UP_SPEC: // Play ascending notes in pairs of 2 // NOT TESTED
+		if (gArpPlayingNote == ARP_NO_NOTE)
+		{
+			gArpPlayingNote = lowestNote;
+		}
+		else
+		{
+			if (gGoingUp)
+			{
+				if (aboveSize > 1)
+				{
+					// Go to next note 2 above
+					gArpPlayingNote = gPressedNotesAbovePlayed[1];
+				}
+				else
+				{
+					gArpPlayingNote = lowestNote;
+				}
+			}
+			else
+			{
+				if (belowSize > 0)
+				{
+					// Go to next note 1 below
+					gArpPlayingNote = gPressedNotesBelowPlayed[0];
+				}
+				else
+				{
+					gArpPlayingNote = highestNote;
+				}
+			}
+			gGoingUp = !gGoingUp;
+		}
+		break;
+	case ARP_DOWN: // Play descending notes // NOT TESTED
 		if (gArpPlayingNote == ARP_NO_NOTE)
 		{
 			gArpPlayingNote = highestNote;
@@ -159,7 +229,42 @@ void ChooseNextNote(ArpMode mode, uint8_t lowestNote, uint8_t highestNote)
 			}
 		}
 		break;
-	case ARP_UP_DOWN:
+	case ARP_DOWN_SPEC: // Play descending notes in pairs of 2 // NOT TESTED
+		if (gArpPlayingNote == ARP_NO_NOTE)
+		{
+			gArpPlayingNote = highestNote;
+			gGoingUp = false;
+		}
+		else
+		{
+			if (gGoingUp)
+			{
+				if (aboveSize > 0)
+				{
+					// Go to next note 1 above
+					gArpPlayingNote = gPressedNotesAbovePlayed[0];
+				}
+				else
+				{
+					gArpPlayingNote = lowestNote;
+				}
+			}
+			else
+			{
+				if (belowSize > 1)
+				{
+					// Go to next note 2 below
+					gArpPlayingNote = gPressedNotesBelowPlayed[1];
+				}
+				else
+				{
+					gArpPlayingNote = highestNote;
+				}
+			}
+			gGoingUp = !gGoingUp;
+		}
+		break;
+	case ARP_UP_DOWN: // Play ascending notes then descending notes
 		if (gArpPlayingNote == ARP_NO_NOTE)
 		{
 			gArpPlayingNote = lowestNote;
@@ -203,9 +308,74 @@ void ChooseNextNote(ArpMode mode, uint8_t lowestNote, uint8_t highestNote)
 				}
 			}
 		}
-	break;
-	default:
-		//@TODO implement rest of arp modes.
+		break;
+	case ARP_UP_DOWN_SPEC: // Play ascending notes then descending notes with random variation // NOT TESTED
+		if (gArpPlayingNote == ARP_NO_NOTE)
+		{
+			gArpPlayingNote = lowestNote;
+		}
+		else
+		{
+			if (gGoingUp)
+			{
+				if (r % 2 && aboveSize > 1) // 50% chance to skip note
+				{
+					// Go to next note 2 above
+					gArpPlayingNote = gPressedNotesAbovePlayed[1];
+				}
+				else if (aboveSize > 0)
+				{
+					// Go to next note above
+					gArpPlayingNote = gPressedNotesAbovePlayed[0];
+				}
+				else if (belowSize > 0)
+				{
+					// Start going down
+					gGoingUp = false;
+					gArpPlayingNote = gPressedNotesBelowPlayed[0];
+				}
+				else
+				{
+					gArpPlayingNote = highestNote;
+				}
+			}
+			else
+			{
+				if (r % 2 && belowSize > 1) // 50% chance to skip note
+				{
+					// Go to next note 2 above
+					gArpPlayingNote = gPressedNotesBelowPlayed[1];
+				}
+				else if (belowSize > 0)
+				{
+					// Go to next note below
+					gArpPlayingNote = gPressedNotesBelowPlayed[0];
+				}
+				else if (aboveSize > 0)
+				{
+					// Start going up
+					gGoingUp = true;
+					gArpPlayingNote = gPressedNotesAbovePlayed[0];
+				}
+				else
+				{
+					gArpPlayingNote = lowestNote;
+				}
+			}
+		}
 		break;
 	}
+}
+
+/// @brief Reset state.
+void ResetState()
+{
+	if (gArpPlayingNote != ARP_NO_NOTE)
+	{
+		MIDI.sendNoteOff(gArpPlayingNote, 0, 1);
+	}
+	gPressedNotesAbovePlayed.clear();
+	gPressedNotesBelowPlayed.clear();
+	gGoingUp = true;
+	gArpPlayingNoteTime = gTime;
 }

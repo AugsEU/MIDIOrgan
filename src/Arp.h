@@ -16,6 +16,8 @@ enum ArpMode
     ARP_UP_DOWN_SPEC,
 };
 
-void PlayArp(ArpMode mode);
+bool ArpEnabled();
+void SetArpMode(ArpMode mode);
+void PlayArp();
 
 #endif // ARP_H
