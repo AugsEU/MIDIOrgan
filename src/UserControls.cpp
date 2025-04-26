@@ -171,7 +171,8 @@ switch (gReadSection)
 /// @param pValue Output value
 /// @param analog Analog value
 /// @param divisions Number of values we can select from.
-void GetAnalogSelectionValue(uint8_t* pValue, uint16_t analog, uint16_t divisions)
+/// @returns True if value not in deadzone
+bool GetAnalogSelectionValue(uint8_t* pValue, uint16_t analog, uint16_t divisions)
 {
 	uint16_t region = (analog * divisions) / ANALOG_MAX_VALUE;
 	uint16_t deadzoneSize = ANALOG_MAX_VALUE / (divisions * 4);
@@ -179,17 +180,18 @@ void GetAnalogSelectionValue(uint8_t* pValue, uint16_t analog, uint16_t division
 	if ((analog + deadzoneSize) * divisions > (region + 1) * ANALOG_MAX_VALUE)
 	{
 		// In upper deadzone do not update
-		return;
+		return false;
 	}
 
 	if ((analog < deadzoneSize) || (analog - deadzoneSize) * divisions < region * ANALOG_MAX_VALUE)
 	{
 		// In lower deadzone do not update
-		return;
+		return false;
 	}
 
 	// Set to region
 	*pValue = (uint8_t)region;
+	return true;
 }
 
 

@@ -11,7 +11,7 @@
 #include <ScreenDisplay.h>
 #include <UserControls.h>
 
-#define PROFILING_ENABLED 0
+#define PROFILING_ENABLED 1
 
 /// ===================================================================================
 /// Members
@@ -32,7 +32,7 @@ size_t gLoopCount = 0;
 /// Setup
 /// ===================================================================================
 
-//-- Arduino intrinsic. Prog entry point.
+/// @brief Arduino intrinsic. Prog entry point.
 void setup() 
 {
 	gTime = millis();
@@ -57,7 +57,7 @@ void setup()
 /// Update
 /// ===================================================================================
 
-//-- Update note states array, send midi commands.
+/// @brief Play keys like a regular piano.
 void PlayNotesDirect()
 {
 	for (int i = 0; i < NUM_NOTES; i++)
@@ -75,7 +75,6 @@ void PlayNotesDirect()
 		{
 			if (!prevPressed)
 			{
-				WriteToLcd("Key!");
 				SendNoteOn(keyNum);
 			}
 		}
@@ -98,8 +97,7 @@ void loop()
 	ReadAllPins();
 	ReadArpMode();
 	UpdateTempo();
-
-	PlayMetronome();
+	UpdateMidiOutput();
 
 	if (ArpEnabled())
 	{

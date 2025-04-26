@@ -1,7 +1,7 @@
 #include <StableState.h>
 
-constexpr uint8_t ENABLE_THRESH = 32;
-constexpr uint8_t STATE_MAX = 64;
+constexpr uint8_t ENABLE_THRESH = 16;
+constexpr uint8_t STATE_MAX = 32;
 
 /// @brief Send in pin state
 void StableState::UpdateState(bool nextState)

@@ -139,230 +139,230 @@ void ChooseNextNote(uint8_t lowestKey, uint8_t highestKey)
 	size_t aboveSize = gPressedNotesAbovePlayed.size();
 	size_t belowSize = gPressedNotesBelowPlayed.size();
 
+	if (gArpPlayingNote == ARP_NO_NOTE || (aboveSize == 0 && belowSize == 0))
+	{
+		// Define first note:
+		switch (gArpMode)
+		{
+		case ARP_OFF:
+			break;
+		case ARP_SPEC: // Play somewhat randomly
+			gArpPlayingNote = r % 2 ? lowestKey : highestKey;
+			break;
+		case ARP_UP:
+			gArpPlayingNote = lowestKey;
+			break;
+		case ARP_UP_SPEC:
+			gArpPlayingNote = lowestKey;
+			break;
+		case ARP_DOWN:
+			gArpPlayingNote = highestKey;
+			break;
+		case ARP_DOWN_SPEC:
+			gArpPlayingNote = highestKey;
+			gGoingUp = false;
+			break;
+		case ARP_UP_DOWN:
+			gArpPlayingNote = lowestKey;
+			break;
+		case ARP_UP_DOWN_SPEC:
+			gArpPlayingNote = lowestKey;
+			break;
+		}
+		return;
+	}
+
 	switch (gArpMode)
 	{
 	case ARP_OFF:
 	break;
 	case ARP_SPEC: // Play somewhat randomly
-		if (r < 5 && aboveSize > 0) // Go above
+		if ((r < 5 || belowSize == 0) && aboveSize > 0) // Go above
 		{
 			r = random(0, aboveSize);
 			gArpPlayingNote = gPressedNotesAbovePlayed[r];
 		}
-		else if (r < 10 && belowSize > 0) // Go below
+		else // Go below
 		{
 			r = random(0, belowSize);
 			gArpPlayingNote = gPressedNotesBelowPlayed[r];
 		}
-		else // Go high or lowest notes?
-		{
-			gArpPlayingNote = r % 2 ? lowestKey : highestKey;
-		}
 		break;
 	case ARP_UP: // Play ascending notes
-		if (gArpPlayingNote == ARP_NO_NOTE)
+		if (aboveSize > 0)
 		{
-			gArpPlayingNote = lowestKey;
+			// Go to next note above
+			gArpPlayingNote = gPressedNotesAbovePlayed[0];
 		}
 		else
+		{
+			// Go back to lowest note.
+			gArpPlayingNote = lowestKey;
+		}
+		break;
+	case ARP_UP_SPEC: // Play ascending notes in pairs of 2
+		if (aboveSize == 0)
+		{
+			gArpPlayingNote = lowestKey;
+			gGoingUp = true;
+		}
+		else if (gGoingUp)
+		{
+			if (aboveSize > 1)
+			{
+				// Go to next note 2 above
+				gArpPlayingNote = gPressedNotesAbovePlayed[1];
+			}
+			else
+			{
+				gArpPlayingNote = gPressedNotesAbovePlayed[0];
+			}
+
+			gGoingUp = false;
+		}
+		else
+		{
+			if (belowSize > 0)
+			{
+				// Go to next note 1 below
+				gArpPlayingNote = gPressedNotesBelowPlayed[0];
+			}
+			else
+			{
+				gArpPlayingNote = lowestKey;
+			}
+			gGoingUp = true;
+		}
+		break;
+	case ARP_DOWN: // Play descending notes // NOT TESTED
+		if (belowSize > 0)
+		{
+			// Go to next note above
+			gArpPlayingNote = gPressedNotesBelowPlayed[0];
+		}
+		else
+		{
+			// Go back to lowest note.
+			gArpPlayingNote = highestKey;
+		}
+		break;
+	case ARP_DOWN_SPEC: // Play descending notes in pairs of 2 // NOT TESTED
+		if (belowSize == 0)
+		{
+			gArpPlayingNote = highestKey;
+			gGoingUp = false;
+		}
+		else if (!gGoingUp)
+		{
+			if (belowSize > 1)
+			{
+				// Go to next note 2 above
+				gArpPlayingNote = gPressedNotesBelowPlayed[1];
+			}
+			else
+			{
+				gArpPlayingNote = gPressedNotesBelowPlayed[0];
+			}
+
+			gGoingUp = true;
+		}
+		else
+		{
+			if (aboveSize > 0)
+			{
+				// Go to next note 1 below
+				gArpPlayingNote = gPressedNotesAbovePlayed[0];
+			}
+			else
+			{
+				gArpPlayingNote = highestKey;
+			}
+			gGoingUp = false;
+		}
+		break;
+	case ARP_UP_DOWN: // Play ascending notes then descending notes
+		if (gGoingUp)
 		{
 			if (aboveSize > 0)
 			{
 				// Go to next note above
 				gArpPlayingNote = gPressedNotesAbovePlayed[0];
 			}
-			else
+			else if (belowSize > 0)
 			{
-				// Go back to lowest note.
-				gArpPlayingNote = lowestKey;
-			}
-		}
-		break;
-	case ARP_UP_SPEC: // Play ascending notes in pairs of 2 // NOT TESTED
-		if (gArpPlayingNote == ARP_NO_NOTE)
-		{
-			gArpPlayingNote = lowestKey;
-		}
-		else
-		{
-			if (gGoingUp)
-			{
-				if (aboveSize > 1)
-				{
-					// Go to next note 2 above
-					gArpPlayingNote = gPressedNotesAbovePlayed[1];
-				}
-				else
-				{
-					gArpPlayingNote = lowestKey;
-				}
+				// Start going down
+				gGoingUp = false;
+				gArpPlayingNote = gPressedNotesBelowPlayed[0];
 			}
 			else
 			{
-				if (belowSize > 0)
-				{
-					// Go to next note 1 below
-					gArpPlayingNote = gPressedNotesBelowPlayed[0];
-				}
-				else
-				{
-					gArpPlayingNote = highestKey;
-				}
+				gArpPlayingNote = highestKey;
 			}
-			gGoingUp = !gGoingUp;
-		}
-		break;
-	case ARP_DOWN: // Play descending notes // NOT TESTED
-		if (gArpPlayingNote == ARP_NO_NOTE)
-		{
-			gArpPlayingNote = highestKey;
 		}
 		else
 		{
 			if (belowSize > 0)
 			{
-				// Go to next note above
+				// Go to next note below
 				gArpPlayingNote = gPressedNotesBelowPlayed[0];
 			}
-			else
+			else if (aboveSize > 0)
 			{
-				// Go back to lowest note.
-				gArpPlayingNote = highestKey;
-			}
-		}
-		break;
-	case ARP_DOWN_SPEC: // Play descending notes in pairs of 2 // NOT TESTED
-		if (gArpPlayingNote == ARP_NO_NOTE)
-		{
-			gArpPlayingNote = highestKey;
-			gGoingUp = false;
-		}
-		else
-		{
-			if (gGoingUp)
-			{
-				if (aboveSize > 0)
-				{
-					// Go to next note 1 above
-					gArpPlayingNote = gPressedNotesAbovePlayed[0];
-				}
-				else
-				{
-					gArpPlayingNote = lowestKey;
-				}
+				// Start going up
+				gGoingUp = true;
+				gArpPlayingNote = gPressedNotesAbovePlayed[0];
 			}
 			else
 			{
-				if (belowSize > 1)
-				{
-					// Go to next note 2 below
-					gArpPlayingNote = gPressedNotesBelowPlayed[1];
-				}
-				else
-				{
-					gArpPlayingNote = highestKey;
-				}
-			}
-			gGoingUp = !gGoingUp;
-		}
-		break;
-	case ARP_UP_DOWN: // Play ascending notes then descending notes
-		if (gArpPlayingNote == ARP_NO_NOTE)
-		{
-			gArpPlayingNote = lowestKey;
-		}
-		else
-		{
-			if (gGoingUp)
-			{
-				if (aboveSize > 0)
-				{
-					// Go to next note above
-					gArpPlayingNote = gPressedNotesAbovePlayed[0];
-				}
-				else if (belowSize > 0)
-				{
-					// Start going down
-					gGoingUp = false;
-					gArpPlayingNote = gPressedNotesBelowPlayed[0];
-				}
-				else
-				{
-					gArpPlayingNote = highestKey;
-				}
-			}
-			else
-			{
-				if (belowSize > 0)
-				{
-					// Go to next note below
-					gArpPlayingNote = gPressedNotesBelowPlayed[0];
-				}
-				else if (aboveSize > 0)
-				{
-					// Start going up
-					gGoingUp = true;
-					gArpPlayingNote = gPressedNotesAbovePlayed[0];
-				}
-				else
-				{
-					gArpPlayingNote = lowestKey;
-				}
+				gArpPlayingNote = lowestKey;
 			}
 		}
 		break;
 	case ARP_UP_DOWN_SPEC: // Play ascending notes then descending notes with random variation // NOT TESTED
-		if (gArpPlayingNote == ARP_NO_NOTE)
+		if (gGoingUp)
 		{
-			gArpPlayingNote = lowestKey;
-		}
-		else
-		{
-			if (gGoingUp)
+			if (r % 2 && aboveSize > 1) // 50% chance to skip note
 			{
-				if (r % 2 && aboveSize > 1) // 50% chance to skip note
-				{
-					// Go to next note 2 above
-					gArpPlayingNote = gPressedNotesAbovePlayed[1];
-				}
-				else if (aboveSize > 0)
-				{
-					// Go to next note above
-					gArpPlayingNote = gPressedNotesAbovePlayed[0];
-				}
-				else if (belowSize > 0)
-				{
-					// Start going down
-					gGoingUp = false;
-					gArpPlayingNote = gPressedNotesBelowPlayed[0];
-				}
-				else
-				{
-					gArpPlayingNote = highestKey;
-				}
+				// Go to next note 2 above
+				gArpPlayingNote = gPressedNotesAbovePlayed[1];
+			}
+			else if (aboveSize > 0)
+			{
+				// Go to next note above
+				gArpPlayingNote = gPressedNotesAbovePlayed[0];
+			}
+			else if (belowSize > 0)
+			{
+				// Start going down
+				gGoingUp = false;
+				gArpPlayingNote = gPressedNotesBelowPlayed[0];
 			}
 			else
 			{
-				if (r % 2 && belowSize > 1) // 50% chance to skip note
-				{
-					// Go to next note 2 above
-					gArpPlayingNote = gPressedNotesBelowPlayed[1];
-				}
-				else if (belowSize > 0)
-				{
-					// Go to next note below
-					gArpPlayingNote = gPressedNotesBelowPlayed[0];
-				}
-				else if (aboveSize > 0)
-				{
-					// Start going up
-					gGoingUp = true;
-					gArpPlayingNote = gPressedNotesAbovePlayed[0];
-				}
-				else
-				{
-					gArpPlayingNote = lowestKey;
-				}
+				gArpPlayingNote = highestKey;
+			}
+		}
+		else
+		{
+			if (r % 2 && belowSize > 1) // 50% chance to skip note
+			{
+				// Go to next note 2 above
+				gArpPlayingNote = gPressedNotesBelowPlayed[1];
+			}
+			else if (belowSize > 0)
+			{
+				// Go to next note below
+				gArpPlayingNote = gPressedNotesBelowPlayed[0];
+			}
+			else if (aboveSize > 0)
+			{
+				// Start going up
+				gGoingUp = true;
+				gArpPlayingNote = gPressedNotesAbovePlayed[0];
+			}
+			else
+			{
+				gArpPlayingNote = lowestKey;
 			}
 		}
 		break;

@@ -39,7 +39,7 @@ extern StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 // Public funcs
 void SetupPins();
 void ReadAllPins();
-void GetAnalogSelectionValue(uint8_t* pValue, uint16_t analog, uint16_t divisions);
+bool GetAnalogSelectionValue(uint8_t* pValue, uint16_t analog, uint16_t divisions);
 
 // Debug
 void DebugDigitalPins();

@@ -24,10 +24,10 @@ constexpr uint8_t PIN_LOOP3 = 40;
 constexpr uint8_t PIN_LOOP4 = 43;
 
 constexpr uint8_t PINA_ARP_GATE = PIN_A15;
-constexpr uint8_t PINA_MIDI_CH_UPPER = PIN_A9;
-constexpr uint8_t PINA_MIDI_CH_LOWER = PIN_A13;
-constexpr uint8_t PINA_OCTAVE_UPPER = PIN_A8;
-constexpr uint8_t PINA_OCTAVE_LOWER = PIN_A14;
+constexpr uint8_t PINA_MIDI_CH_UPPER = PIN_A13;
+constexpr uint8_t PINA_MIDI_CH_LOWER = PIN_A9;
+constexpr uint8_t PINA_OCTAVE_UPPER = PIN_A14;
+constexpr uint8_t PINA_OCTAVE_LOWER = PIN_A8;
 constexpr uint8_t PINA_TEMPO = PIN_A10;
 constexpr uint8_t PINA_KNOB6 = PIN_A12;
 constexpr uint8_t PINA_KNOB7 = PIN_A11;
