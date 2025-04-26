@@ -8,7 +8,7 @@ struct StableState
 {
     uint8_t mState = 0;
 
-    bool UpdateState(bool nextState);
+    void UpdateState(bool nextState);
     bool IsActive();
 };
 

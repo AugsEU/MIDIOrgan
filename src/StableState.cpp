@@ -4,7 +4,7 @@ constexpr uint8_t ENABLE_THRESH = 32;
 constexpr uint8_t STATE_MAX = 64;
 
 /// @brief Send in pin state
-bool StableState::UpdateState(bool nextState)
+void StableState::UpdateState(bool nextState)
 {
     if (!nextState && mState > 0)
     {

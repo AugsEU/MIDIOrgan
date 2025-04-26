@@ -5,7 +5,7 @@ constexpr int8_t NUM_UPPER_KEYS = 44;
 constexpr int8_t LOWER_KEY_SHIFT = 6;
 constexpr int8_t UPPER_KEY_SHIFT = 10;
 
-constexpr int8_t VPIN_TO_KEY_NUM[88] =
+constexpr uint8_t VPIN_TO_KEY_NUM[88] =
 {
     7,
     15,
@@ -97,13 +97,17 @@ constexpr int8_t VPIN_TO_KEY_NUM[88] =
     80
 };
 
-uint8_t VirtualPinToNote(uint8_t vPin, int8_t lowOctave, int8_t upperOctave)
+uint8_t VirtualPinToKeyNum(uint8_t vPin)
 {
-    int8_t keyNum = VPIN_TO_KEY_NUM[vPin];
+    uint8_t keyNum = VPIN_TO_KEY_NUM[vPin];
 
-    bool isUpper = keyNum >= NUM_LOWER_KEYS;
+    return (uint8_t)keyNum;
+}
 
-    if (isUpper)
+
+uint8_t KeyNumToNote(uint8_t keyNum, int8_t lowOctave, int8_t upperOctave)
+{
+    if (IsUpperKey(keyNum))
     {
         keyNum = keyNum + upperOctave * 12 + UPPER_KEY_SHIFT;
     }
@@ -112,5 +116,10 @@ uint8_t VirtualPinToNote(uint8_t vPin, int8_t lowOctave, int8_t upperOctave)
         keyNum = keyNum + lowOctave * 12 + LOWER_KEY_SHIFT;
     }
 
-    return (uint8_t)keyNum;
+    return keyNum;
+}
+
+bool IsUpperKey(uint8_t keyNum) // Is key on the upper keyboard?
+{
+    return keyNum >= NUM_LOWER_KEYS;
 }
