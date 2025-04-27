@@ -46,9 +46,15 @@ constexpr size_t NOTES_VPIN_START = 0;
 constexpr uint8_t NUM_NOTES = 88;
 constexpr uint8_t NOTE_START = 10;
 
+constexpr uint8_t NOTE_NONE = 255;
+
+constexpr int8_t NUM_LOWER_KEYS = 44;
+constexpr int8_t NUM_UPPER_KEYS = 44;
+
 // Assert constants make sense
 static_assert(NUM_NOTES + NOTES_VPIN_START <= NUM_VIRTUAL_MUX_PIN, 
 								"Not enough vpins for notes.");
 static_assert((int)NOTE_START + (int)NUM_NOTES < 128, "Note index exceeds midi maximum");
+static_assert(NUM_LOWER_KEYS + NUM_UPPER_KEYS == NUM_NOTES);
 
 #endif // CONSTANTS_H

@@ -9,9 +9,6 @@
 /// Constants
 /// ===================================================================================
 constexpr uint8_t METRONOME_NOTE = 82;
-
-constexpr int8_t NUM_LOWER_KEYS = 44;
-constexpr int8_t NUM_UPPER_KEYS = 44;
 constexpr int8_t LOWER_KEY_SHIFT = 5;
 constexpr int8_t UPPER_KEY_SHIFT = 9;
 

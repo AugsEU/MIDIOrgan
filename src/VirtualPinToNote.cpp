@@ -1,7 +1,5 @@
 #include <VirtualPinToNote.h>
-
-constexpr int8_t NUM_LOWER_KEYS = 44;
-constexpr int8_t NUM_UPPER_KEYS = 44;
+#include <Constants.h>
 
 constexpr uint8_t VPIN_TO_KEY_NUM[88] =
 {
