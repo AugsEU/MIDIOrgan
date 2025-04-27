@@ -6,6 +6,8 @@
 
 constexpr uint16_t DEFAULT_TEMPO = 120;
 
+extern uTimeMs gTempoInterval;
+
 void UpdateTempo();
 
 void SetTempo(uint16_t tempo);

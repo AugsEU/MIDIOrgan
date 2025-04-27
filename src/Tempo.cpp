@@ -10,7 +10,7 @@ StableAnalog gTempoReading;
 /// @brief Set tempo in bpm
 void SetTempo(uint16_t tempo)
 {
-    gTempoInterval = (1000ul * 60ul) / tempo;
+    gTempoInterval = (1000ul * 120ul) / tempo; // 2 beats
 }
 
 static_assert(ANALOG_MAX_VALUE == 1024, "Need to change function below when changing analog max value");

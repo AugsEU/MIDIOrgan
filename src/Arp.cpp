@@ -5,6 +5,7 @@
 #include <FixedArray.h>
 #include <MidiOutput.h>
 #include <UserControls.h>
+#include <StableAnalog.h>
 
 /// ===================================================================================
 /// Constants
@@ -15,9 +16,11 @@ constexpr uint8_t ARP_NO_NOTE = 255;
 /// Members
 /// ===================================================================================
 ArpMode gArpMode = ArpMode::ARP_OFF;
+ArpSpeed gArpSpeed = ArpSpeed::ARP_SPEED_EIGHTH;
 bool gGoingUp = true;
 
 uTimeMs gArpPlayingNoteTime = 0;
+StableAnalog gArpGate;
 uint8_t gArpPlayingNote = ARP_NO_NOTE;
 
 FixedArray<uint8_t, 8> gPressedNotesAbovePlayed;
@@ -55,6 +58,11 @@ void ReadArpMode()
 	}
 
 	gArpMode = (ArpMode)mode;
+
+	uint8_t speed = (uint8_t)gdpArpSlow.IsActive() | ((uint8_t)gdpArpFast.IsActive() << 1);
+	gArpSpeed = (ArpSpeed)speed;
+
+	gArpGate.ConsumeInput(gapArpGate);
 }
 
 
@@ -108,18 +116,66 @@ void PlayArp()
 	}
 
 	// Now decide which notes to play
-	bool note8 = On4Note(2);
-	bool note16 = On4Note(4);
+	if (gArpPlayingNote == ARP_NO_NOTE)
+	{
+		// Do not start arp until on beat.
+		if (!On4Note(2))
+		{
+			return;
+		}
+	}
 
-	bool noteOn = note8;
-	bool noteOff = !noteOn && note16;
+	bool noteOn = false;
+	switch (gArpSpeed)
+	{
+	case ArpSpeed::ARP_SPEED_QUARTER:
+		noteOn = On4Note(2);
+		break;
+	case ArpSpeed::ARP_SPEED_EIGHTH:
+		noteOn = On4Note(4);
+		break;
+	case ArpSpeed::ARP_SPEED_TRIPLET:
+		noteOn = On4Note(6);
+		break;
+	case ArpSpeed::ARP_SPEED_SIXTEENTH:
+		noteOn = On4Note(8);
+		break;
+	default:
+		break;
+	}
 
 	if (noteOn)
 	{
 		ChooseNextNote(lowestKey, highestKey);
 		SendNoteOn(gArpPlayingNote);
+		gArpPlayingNoteTime = gTime;
 	}
-	else if (noteOff)
+	
+	uTimeMs gateTime = 0; 
+	switch (gArpSpeed)
+	{
+	case ArpSpeed::ARP_SPEED_QUARTER:
+		gateTime = gTempoInterval / 2;
+		break;
+	case ArpSpeed::ARP_SPEED_EIGHTH:
+		gateTime = gTempoInterval / 4;
+		break;
+	case ArpSpeed::ARP_SPEED_TRIPLET:
+		gateTime = gTempoInterval / 6;
+		break;
+	case ArpSpeed::ARP_SPEED_SIXTEENTH:
+		gateTime = gTempoInterval / 8;
+		break;
+	default:
+		break;
+	}
+
+	gateTime -= 1;
+	gateTime *= gArpGate.mStableValue;
+	gateTime >>= ANALOG_READ_RESOLUTION_BITS;
+	bool noteOff = gTime > gArpPlayingNoteTime + gateTime;
+
+	if (noteOff)
 	{
 		if (gArpPlayingNote != ARP_NO_NOTE)
 		{

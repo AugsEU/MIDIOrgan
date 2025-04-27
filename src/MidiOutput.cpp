@@ -8,7 +8,7 @@
 /// ===================================================================================
 /// Constants
 /// ===================================================================================
-constexpr uint8_t METRONOME_NOTE = 75;
+constexpr uint8_t METRONOME_NOTE = 82;
 
 constexpr int8_t NUM_LOWER_KEYS = 44;
 constexpr int8_t NUM_UPPER_KEYS = 44;
@@ -79,8 +79,8 @@ void UpdateMidiOutput()
 /// @brief Play the metronome
 void PlayMetronome()
 {
-    bool noteOn = On4Note(1);
-    bool noteOff = !noteOn && On4Note(2);
+    bool noteOn = On4Note(2);
+    bool noteOff = !noteOn && On4Note(16);
     uint8_t note = METRONOME_NOTE;
 
     if (noteOff && gPlayingMetronomeNote > 0)
