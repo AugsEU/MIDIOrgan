@@ -4,13 +4,14 @@
 #ifndef TEMPO_H
 #define TEMPO_H
 
-constexpr uint16_t DEFAULT_TEMPO = 120;
-
 extern uTimeMs gTempoInterval;
+extern uint16_t gTempoCache;
 
 void UpdateTempo();
 
-void SetTempo(uint16_t tempo);
+
+void RecalculateTempo();
+void SetTempo();
 
 bool On4Note(uint8_t division = 1); // Quarter note and divisions
 

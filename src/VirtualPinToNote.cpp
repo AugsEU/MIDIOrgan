@@ -93,11 +93,110 @@ constexpr uint8_t VPIN_TO_KEY_NUM[88] =
     80
 };
 
+constexpr uint8_t KEY_NUM_TO_VPIN[88] = 
+{
+    77,
+    33,
+    55,
+    11,
+    66,
+    22,
+    44,
+    0,
+    78,
+    34,
+    56,
+    12,
+    67,
+    23,
+    45,
+    1,
+    79,
+    35,
+    57,
+    13,
+    68,
+    24,
+    46,
+    2,
+    80,
+    36,
+    58,
+    14,
+    69,
+    25,
+    47,
+    3,
+    81,
+    37,
+    59,
+    15,
+    70,
+    26,
+    48,
+    4,
+    82,
+    38,
+    60,
+    16,
+    71,
+    27,
+    49,
+    5,
+    83,
+    39,
+    61,
+    17,
+    72,
+    28,
+    50,
+    6,
+    84,
+    40,
+    62,
+    18,
+    73,
+    29,
+    51,
+    7,
+    85,
+    41,
+    63,
+    19,
+    74,
+    30,
+    52,
+    8,
+    86,
+    42,
+    64,
+    20,
+    75,
+    31,
+    53,
+    9,
+    87,
+    43,
+    65,
+    21,
+    76,
+    32,
+    54,
+    10
+};
+
 uint8_t VirtualPinToKeyNum(uint8_t vPin)
 {
-    uint8_t keyNum = VPIN_TO_KEY_NUM[vPin];
+    uint8_t keyNum = VPIN_TO_KEY_NUM[vPin - NOTES_VPIN_START];
 
     return (uint8_t)keyNum;
+}
+
+uint8_t KeyNumToVirtualPin(uint8_t keyNum)
+{
+    uint8_t vPin = KEY_NUM_TO_VPIN[keyNum] + NOTES_VPIN_START;
+
+    return (uint8_t)vPin;
 }
 
 bool IsUpperKey(uint8_t keyNum) // Is key on the upper keyboard?

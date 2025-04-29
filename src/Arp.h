@@ -32,8 +32,10 @@ struct Arpeggiator
     uTimeMs mLastNoteTime = 0;
 
     void PlayNotes(uint8_t keyStart, uint8_t keyEnd);
-    void ChooseNextNote(uint8_t lowestKey, uint8_t highestKey);
     void ResetState();
+
+private:
+    void ChooseNextNote(uint8_t lowestKey, uint8_t highestKey);
 };
 
 bool ArpEnabled();

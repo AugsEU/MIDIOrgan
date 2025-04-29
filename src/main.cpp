@@ -22,7 +22,7 @@ uTimeMs gPrevTime;
 NotePressInfo gNoteStates[NUM_NOTES];
 
 #if PROFILING_ENABLED
-constexpr size_t LOOP_PROFILE_LIMIT = 10000;
+constexpr size_t LOOP_PROFILE_LIMIT = 1000;
 uTimeMs gFirstLoopTime = 0;
 size_t gLoopCount = 0;
 #endif // PROFILING_ENABLED
@@ -36,7 +36,6 @@ size_t gLoopCount = 0;
 void setup() 
 {
 	gTime = millis();
-	SetTempo(DEFAULT_TEMPO);
 	MidiOutputSetup();
 	LcdInit();
 
@@ -98,6 +97,7 @@ void loop()
 	ReadArpMode();
 	UpdateTempo();
 	UpdateMidiOutput();
+	UpdateScreen();
 
 	if (ArpEnabled())
 	{

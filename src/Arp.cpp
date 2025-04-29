@@ -26,7 +26,6 @@ Arpeggiator gUpperArp;
 FixedArray<uint8_t, 8> gPressedNotesAbovePlayed;
 FixedArray<uint8_t, 8> gPressedNotesBelowPlayed;
 
-
 /// ===================================================================================
 /// Public functions
 /// ===================================================================================
@@ -65,6 +64,43 @@ void ReadArpMode()
 /// @brief Update notes and send out arp notes to midi
 void PlayArp()
 {
+	// Update all keys.
+	for (uint8_t i = 0; i < NUM_NOTES; i++)
+	{
+		uint8_t vPinIdx = NOTES_VPIN_START + i;
+		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
+
+		bool prevPressed = gNoteStates[i].mPressed;
+		gNoteStates[i].ChangeState(vPinState, gTime);
+
+		uint8_t keyNum = VirtualPinToKeyNum(i);
+
+		bool shouldPlayNormally = (!gdpArpSelectLower.IsActive() && !IsUpperKey(keyNum))
+								|| (!gdpArpSelectUpper.IsActive() && IsUpperKey(keyNum));
+
+		if (!shouldPlayNormally)
+		{
+			continue;
+		}
+
+		bool pressed = gNoteStates[i].mPressed;
+
+		if (pressed)
+		{
+			if (!prevPressed)
+			{
+				SendNoteOn(keyNum);
+			}
+		}
+		else
+		{
+			if (prevPressed)
+			{
+				SendNoteOff(keyNum);
+			}
+		}
+	}
+
 	if (gdpArpSelectLower.IsActive())
 	{
 		gLowerArp.PlayNotes(0, NUM_LOWER_KEYS);
@@ -72,7 +108,7 @@ void PlayArp()
 	
 	if (gdpArpSelectUpper.IsActive())
 	{
-		gUpperArp.PlayNotes(NUM_LOWER_KEYS+1, NUM_NOTES);
+		gUpperArp.PlayNotes(NUM_LOWER_KEYS, NUM_NOTES);
 	}
 }
 
@@ -91,15 +127,11 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 	gPressedNotesAbovePlayed.clear();
 	gPressedNotesBelowPlayed.clear();
 
-	for (uint8_t i = keyStart; i < keyEnd; i++)
+	for (uint8_t keyNum = keyStart; keyNum < keyEnd; keyNum++)
 	{
-		uint8_t vPinIdx = NOTES_VPIN_START + i;
-		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
-		uint8_t keyNum = VirtualPinToKeyNum(i);
+		uint8_t noteIdx = KeyNumToVirtualPin(keyNum) - NOTES_VPIN_START;
 		
-		gNoteStates[i].ChangeState(vPinState, gTime);
-
-		bool pressed = gNoteStates[i].mPressed;
+		bool pressed = gNoteStates[noteIdx].mPressed;
 
 		if (pressed)
 		{

@@ -5,27 +5,27 @@
 
 uTimeMs gTempoInterval = 500; // Quarter note interval in milliseconds
 uTimeMs gTempoTicker = 0;
+uint16_t gTempoCache = 120;
 StableAnalog gTempoReading;
 
 /// @brief Set tempo in bpm
-void SetTempo(uint16_t tempo)
+void SetTempo()
 {
-    gTempoInterval = (1000ul * 120ul) / tempo; // 2 beats
+    gTempoInterval = (1000ul * 120ul) / gTempoCache; // 2 beats
 }
 
 static_assert(ANALOG_MAX_VALUE == 1024, "Need to change function below when changing analog max value");
 /// @brief Calculates tempo from analog values.
-uint32_t CalculateTempo(uint32_t x)
+void RecalculateTempo()
 {
+    uint32_t x = gTempoReading.mStableValue;
     // Calculate (640 * x^3) / (1024^3) without overflow:
     constexpr uint32_t divisor = (uint32_t)ANALOG_MAX_VALUE * (uint32_t)ANALOG_MAX_VALUE;
     uint32_t term = x * x * 640 / divisor; 
     term *= x;
     term /= (uint32_t)ANALOG_MAX_VALUE;
 
-    uint32_t tempo = 40 + term;
-
-    return tempo;
+    gTempoCache = 40 + term;
 }
 
 
@@ -44,7 +44,8 @@ void UpdateTempo()
     {
         gTempoTicker -= gTempoInterval;
 
-        SetTempo(CalculateTempo(gTempoReading.mStableValue)); // Calculate new tempo
+        RecalculateTempo(); // Calculate new tempo
+        SetTempo(); // Set new tempo
     }
 }
 

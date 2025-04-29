@@ -35,6 +35,9 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 void MidiOutputSetup()
 {
 	MIDI.begin(MIDI_CHANNEL_OFF);
+
+    gUpperOct = GetAnalogSelectionValue(gapOctaveUpper, 5) - 3;
+    gLowerOct = GetAnalogSelectionValue(gapOctaveLower, 5) + 1;
 }
 
 
@@ -49,7 +52,7 @@ void UpdateMidiOutput()
     int8_t newUpOct = 0, newLowOct = 0;
     
     // Cast is ok because values are small
-    if (GetAnalogSelectionValue((uint8_t*)&newUpOct, gapOctaveUpper, 5))
+    if (UpdateAnalogSelectionValue((uint8_t*)&newUpOct, gapOctaveUpper, 5))
     {
         newUpOct -= 3;
 
@@ -59,13 +62,13 @@ void UpdateMidiOutput()
         }
         gUpperOct = newUpOct;
     }
-    if (GetAnalogSelectionValue((uint8_t*)&newLowOct, gapOctaveLower, 5))
+    if (UpdateAnalogSelectionValue((uint8_t*)&newLowOct, gapOctaveLower, 5))
     {
         newLowOct += 1;
 
         if (gLowerOct != newLowOct)
         {
-            CancelAllNotes(true);
+            CancelAllNotes(false);
         }
         gLowerOct = newLowOct;
     }

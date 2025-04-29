@@ -3,6 +3,11 @@
 #ifndef MIDI_OUTPUT_H
 #define MIDI_OUTPUT_H
 
+extern uint8_t gUpperCh;
+extern uint8_t gLowerCh;
+extern int8_t gUpperOct;
+extern int8_t gLowerOct;
+
 void MidiOutputSetup();
 void UpdateMidiOutput();
 
