@@ -1,12 +1,11 @@
 #include <ScreenDisplay.h>
-#include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 #include <Globals.h>
 #include <TimeInfo.h>
 #include <Tempo.h>
 #include <MidiOutput.h>
 
-constexpr uTimeMs REFRESH_PERIOD = 100; // 100ms for 10FPS.
+constexpr uTimeMs REFRESH_PERIOD = 10; // 10ms for 100FPS.
 constexpr uint8_t SCREEN_WIDTH = 16;
 constexpr uint8_t SCREEN_HEIGHT = 16;
 constexpr uint8_t SCREEN_ADR = 0x27;
@@ -20,22 +19,20 @@ LiquidCrystal_I2C gLcd(SCREEN_ADR, SCREEN_WIDTH,SCREEN_HEIGHT);
 uTimeMs gLastUpdateTime;
 char gScreenMsgBuff[SCREEN_WIDTH + 1]; // Screen is 16 long + zero terminator
 
-uint16_t gLastTempoCache = 0xFFFF;
-int8_t gLastUpperOct = -127;
-int8_t gLastLowerOct = -127;
-uint8_t gLastUpperCh = 255;
-uint8_t gLastLowerCh = 255;
+uint8_t gLcdSectionWrite = 0;
+LcdUpdateSection<uint16_t> gTempoSection;
+LcdUpdateSection<int8_t> gUpperOctSection;
+LcdUpdateSection<int8_t> gLowerOctSection;
+LcdUpdateSection<uint8_t> gUpperChSection;
+LcdUpdateSection<uint8_t> gLowerChSection;
 
 void LcdInit()
 {
     gLcd.init();
     gLcd.backlight();  
-    gLcd.setCursor(0, 0);
-    gLcd.print(SCREEN_GENERAL_INFO_TOP_LINE);
-    gLcd.setCursor(0, 1);
-    gLcd.print(SCREEN_GENERAL_INFO_BOT_LINE);
-
     gScreenMsgBuff[SCREEN_WIDTH] = '\0';
+
+    EnterGeneralInfo();
 }
 
 void UpdateScreen()
@@ -52,46 +49,14 @@ void UpdateScreen()
     return;
 }
 
-/// @brief Write a number inplace for a string buff. NOT SAFE!!
-template<typename T>
-void WriteNumToScreen(T num, char* buff, uint8_t len)
+void EnterGeneralInfo()
 {
-    char* writePtr = buff;
-    for(uint8_t i = 0; i < len; i++)
-    {
-        buff[i] = ' ';
-    }
+    gLcd.setCursor(0, 0);
+    gLcd.print(SCREEN_GENERAL_INFO_TOP_LINE);
+    gLcd.setCursor(0, 1);
+    gLcd.print(SCREEN_GENERAL_INFO_BOT_LINE);
 
-    buff[len] = '\0';
-    
-    // Handle negative numbers
-    if (num < 0)
-    {
-        *writePtr++ = '-';
-        num = -num;
-    }
-
-    char* start = writePtr;
-
-    // Convert digits (0 is handled specially to avoid empty buffer)
-    do
-    {
-        *writePtr++ = '0' + static_cast<char>(num % 10);
-        num /= 10;
-    } while (num > 0);
-
-    // Reverse digits
-    char* end = writePtr - 1;
-    while (start < end)
-    {
-        char tmp = *start;
-        *start = *end;
-        *end = tmp;
-        start++;
-        end--;
-    }
-
-    gLcd.print(buff);
+    gLcdSectionWrite = 0;
 }
 
 void WriteGeneralInfo()
@@ -103,23 +68,29 @@ void WriteGeneralInfo()
     //1 1200 | 12  | -3 
 
     char buffer[5];
-    RecalculateTempo();
 
+    switch (gLcdSectionWrite)
+    {
     // Top line
-    gLcd.setCursor(8, 0);
-    WriteNumToScreen(gUpperOct + 1, buffer, 2);
+    case 0:
+        gUpperOctSection.WriteToLcd(8, 0, gUpperOct + 1, buffer, 2);
+        break;
+    case 1:
+        gUpperChSection.WriteToLcd(14, 0, gUpperCh, buffer, 2);
+        break;
+    // Bottom line.
+    case 2:
+        RecalculateTempo();
+        gTempoSection.WriteToLcd(0, 1, gTempoCache, buffer, 4);
+        break;
+    case 3:
+        gLowerOctSection.WriteToLcd(7, 1, gLowerOct-3, buffer, 2);
+        break;
+    case 4:
+        gLowerChSection.WriteToLcd(13, 1, gLowerCh, buffer, 2);
+        break;
+    }
 
-    gLcd.setCursor(14, 0);
-    WriteNumToScreen(gUpperCh, buffer, 2);
-
-    // // Bottom line.
-    gLcd.setCursor(0, 1);
-    WriteNumToScreen(gTempoCache, buffer, 4);
-
-    gLcd.setCursor(7, 1);
-    WriteNumToScreen(gLowerOct-3, buffer, 2);
-
-    gLcd.setCursor(13, 1);
-    WriteNumToScreen(gLowerCh, buffer, 2);
+    gLcdSectionWrite = (gLcdSectionWrite + 1) % 5;
 }
 
