@@ -6,7 +6,7 @@
 #include <Tempo.h>
 #include <MidiOutput.h>
 
-constexpr uTimeMs REFRESH_PERIOD = 100; // 16ms for 60FPS.
+constexpr uTimeMs REFRESH_PERIOD = 100; // 100ms for 10FPS.
 constexpr uint8_t SCREEN_WIDTH = 16;
 constexpr uint8_t SCREEN_HEIGHT = 16;
 constexpr uint8_t SCREEN_ADR = 0x27;
@@ -20,12 +20,20 @@ LiquidCrystal_I2C gLcd(SCREEN_ADR, SCREEN_WIDTH,SCREEN_HEIGHT);
 uTimeMs gLastUpdateTime;
 char gScreenMsgBuff[SCREEN_WIDTH + 1]; // Screen is 16 long + zero terminator
 
+uint16_t gLastTempoCache = 0xFFFF;
+int8_t gLastUpperOct = -127;
+int8_t gLastLowerOct = -127;
+uint8_t gLastUpperCh = 255;
+uint8_t gLastLowerCh = 255;
+
 void LcdInit()
 {
     gLcd.init();
     gLcd.backlight();  
     gLcd.setCursor(0, 0);
-    gLcd.print("Loading...");
+    gLcd.print(SCREEN_GENERAL_INFO_TOP_LINE);
+    gLcd.setCursor(0, 1);
+    gLcd.print(SCREEN_GENERAL_INFO_BOT_LINE);
 
     gScreenMsgBuff[SCREEN_WIDTH] = '\0';
 }
@@ -39,35 +47,41 @@ void UpdateScreen()
 
     gLastUpdateTime = gTime;
 
-    // Screen layout
-    // General Info
-    //  0123456789012345
-    //0 Temp Ch 16 Oc -3 
-    //1 1200 | 12  | -3 
     WriteGeneralInfo();
     
     return;
 }
 
 /// @brief Write a number inplace for a string buff. NOT SAFE!!
-void WriteNumToBuffi8(int8_t num, char* buff)
+template<typename T>
+void WriteNumToScreen(T num, char* buff, uint8_t len)
 {
+    char* writePtr = buff;
+    for(uint8_t i = 0; i < len; i++)
+    {
+        buff[i] = ' ';
+    }
+
+    buff[len] = '\0';
+    
+    // Handle negative numbers
     if (num < 0)
     {
-        *buff++ = '-';
+        *writePtr++ = '-';
         num = -num;
     }
 
-    char* start = buff;
+    char* start = writePtr;
 
+    // Convert digits (0 is handled specially to avoid empty buffer)
     do
     {
-        *buff++ = '0' + (char)(num % 10);
+        *writePtr++ = '0' + static_cast<char>(num % 10);
         num /= 10;
-    }
-    while (num > 0);
+    } while (num > 0);
 
-    char* end = buff - 1;
+    // Reverse digits
+    char* end = writePtr - 1;
     while (start < end)
     {
         char tmp = *start;
@@ -76,47 +90,36 @@ void WriteNumToBuffi8(int8_t num, char* buff)
         start++;
         end--;
     }
-}
 
-void WriteNumToBuffu16(uint16_t num, char* buff)
-{
-    char* start = buff;
-
-    do
-    {
-        *buff = '0' + (char)(num % 10);
-        buff++;
-        num /= 10;
-    }
-    while (num > 0);
-
-    char* end = buff - 1;
-    while (start < end)
-    {
-        char tmp = *start;
-        *start = *end;
-        *end = tmp;
-        start++;
-        end--;
-    }
+    gLcd.print(buff);
 }
 
 void WriteGeneralInfo()
 {
+    // Screen layout
+    // General Info
+    //  0123456789012345
+    //0 Temp Oc 16 Ch -3 
+    //1 1200 | 12  | -3 
+
+    char buffer[5];
     RecalculateTempo();
 
     // Top line
-    strncpy(gScreenMsgBuff, SCREEN_GENERAL_INFO_TOP_LINE, SCREEN_WIDTH+1);
-    WriteNumToBuffi8(gUpperOct + 1, gScreenMsgBuff + 8);
-    WriteNumToBuffi8(gUpperCh + 1, gScreenMsgBuff + 14);
-    gLcd.setCursor(0, 0);
-    gLcd.print(gScreenMsgBuff);
+    gLcd.setCursor(8, 0);
+    WriteNumToScreen(gUpperOct + 1, buffer, 2);
 
-    // Bottom line.
-    strncpy(gScreenMsgBuff, SCREEN_GENERAL_INFO_BOT_LINE, SCREEN_WIDTH+1);
-    WriteNumToBuffu16(gTempoCache, gScreenMsgBuff);
-    WriteNumToBuffi8(gLowerOct, gScreenMsgBuff + 7);
-    WriteNumToBuffi8(gLowerCh, gScreenMsgBuff + 13);
+    gLcd.setCursor(14, 0);
+    WriteNumToScreen(gUpperCh, buffer, 2);
+
+    // // Bottom line.
     gLcd.setCursor(0, 1);
-    gLcd.print(gScreenMsgBuff);
+    WriteNumToScreen(gTempoCache, buffer, 4);
+
+    gLcd.setCursor(7, 1);
+    WriteNumToScreen(gLowerOct-3, buffer, 2);
+
+    gLcd.setCursor(13, 1);
+    WriteNumToScreen(gLowerCh, buffer, 2);
 }
+
