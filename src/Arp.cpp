@@ -16,7 +16,7 @@
 /// Members
 /// ===================================================================================
 ArpMode gArpMode = ArpMode::ARP_OFF;
-ArpSpeed gArpSpeed = ArpSpeed::ARP_SPEED_EIGHTH;
+uint8_t gArpSpeed = 2;
 
 StableAnalog gArpGate;
 
@@ -53,8 +53,24 @@ void ReadArpMode()
 
 	gArpMode = (ArpMode)mode;
 
-	uint8_t speed = (uint8_t)gdpArpSlow.IsActive() | ((uint8_t)gdpArpFast.IsActive() << 1);
-	gArpSpeed = (ArpSpeed)speed;
+	ArpSpeed speed = (ArpSpeed)((uint8_t)gdpArpSlow.IsActive() | ((uint8_t)gdpArpFast.IsActive() << 1));
+	switch (speed)
+	{
+	case ArpSpeed::ARP_SPEED_QUARTER:
+		gArpSpeed = 2;
+		break;
+	case ArpSpeed::ARP_SPEED_EIGHTH:
+		gArpSpeed = 4;
+		break;
+	case ArpSpeed::ARP_SPEED_TRIPLET:
+		gArpSpeed = 6;
+		break;
+	case ArpSpeed::ARP_SPEED_SIXTEENTH:
+		gArpSpeed = 8;
+		break;
+	default:
+		break;
+	}
 
 	gArpGate.ConsumeInput(gapArpGate);
 }
@@ -169,50 +185,21 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 		}
 	}
 
-	bool noteOn = false;
-	switch (gArpSpeed)
-	{
-	case ArpSpeed::ARP_SPEED_QUARTER:
-		noteOn = On4Note(2);
-		break;
-	case ArpSpeed::ARP_SPEED_EIGHTH:
-		noteOn = On4Note(4);
-		break;
-	case ArpSpeed::ARP_SPEED_TRIPLET:
-		noteOn = On4Note(6);
-		break;
-	case ArpSpeed::ARP_SPEED_SIXTEENTH:
-		noteOn = On4Note(8);
-		break;
-	default:
-		break;
-	}
+	bool noteOn = On4Note(gArpSpeed);
 
 	if (noteOn)
 	{
+		if (mLastNoteTime != 0)
+		{
+			// Looks like we haven't set the note off before the next note.
+			SendNoteOff(mPlayingKey);
+		}
 		ChooseNextNote(lowestKey, highestKey);
 		SendNoteOn(mPlayingKey);
 		mLastNoteTime = gTime;
 	}
 	
-	uTimeMs gateTime = 0; 
-	switch (gArpSpeed)
-	{
-	case ArpSpeed::ARP_SPEED_QUARTER:
-		gateTime = gTempoInterval / 2;
-		break;
-	case ArpSpeed::ARP_SPEED_EIGHTH:
-		gateTime = gTempoInterval / 4;
-		break;
-	case ArpSpeed::ARP_SPEED_TRIPLET:
-		gateTime = gTempoInterval / 6;
-		break;
-	case ArpSpeed::ARP_SPEED_SIXTEENTH:
-		gateTime = gTempoInterval / 8;
-		break;
-	default:
-		break;
-	}
+	uTimeMs gateTime = gTempoInterval / gArpSpeed; 
 
 	gateTime -= 1;
 	gateTime *= gArpGate.mStableValue;
@@ -224,6 +211,7 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 		if (mPlayingKey != NOTE_NONE)
 		{
 			SendNoteOff(mPlayingKey);
+			mLastNoteTime = 0;// Set to zero to indicate we have sent the note off.
 		}
 	}
 }

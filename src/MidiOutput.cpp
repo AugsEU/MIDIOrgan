@@ -49,10 +49,33 @@ void UpdateMidiOutput()
 {
     PlayMetronome();
 
-    gUpperCh.UpdateSelection(gapMidiChUpper);
-    gLowerCh.UpdateSelection(gapMidiChLower);
-    gUpperOct.UpdateSelection(gapOctaveUpper);
-    gLowerOct.UpdateSelection(gapOctaveLower);
+    uint8_t unextValue = gUpperCh.CalcNextSelection(gapMidiChUpper);
+    if(gUpperCh.mValue != unextValue)
+    {
+        CancelAllNotes(true);
+        gUpperCh.mValue = unextValue;    
+    }
+
+    unextValue = gLowerCh.CalcNextSelection(gapMidiChLower);
+    if (gLowerCh.mValue != unextValue)
+    {
+        CancelAllNotes(false);
+        gLowerCh.mValue = unextValue;
+    }
+
+    int8_t nextValue = gUpperOct.CalcNextSelection(gapOctaveUpper);
+    if (gUpperOct.mValue != nextValue)
+    {
+        CancelAllNotes(true);
+        gUpperOct.mValue = nextValue;
+    }
+
+    nextValue = gLowerOct.CalcNextSelection(gapOctaveLower);
+    if (gLowerOct.mValue != nextValue)
+    {
+        CancelAllNotes(false);
+        gLowerOct.mValue = nextValue;
+    }
 }
 
 

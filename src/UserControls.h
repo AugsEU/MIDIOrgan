@@ -52,7 +52,7 @@ struct AnalogSelector
         mValue = (T)region + minValue;
     }
 
-    void UpdateSelection(uint16_t analog)
+    T CalcNextSelection(uint16_t analog)
     {
         uint16_t region = (analog * divisions) / ANALOG_MAX_VALUE;
         uint16_t deadzoneSize = ANALOG_MAX_VALUE / (divisions * 4);
@@ -60,17 +60,16 @@ struct AnalogSelector
         if ((analog + deadzoneSize) * divisions > (region + 1) * ANALOG_MAX_VALUE)
         {
             // In upper deadzone do not update
-            return;
+            return mValue;
         }
     
         if ((analog < deadzoneSize) || (analog - deadzoneSize) * divisions < region * ANALOG_MAX_VALUE)
         {
             // In lower deadzone do not update
-            return;
+            return mValue;
         }
     
-        // Set to region
-        mValue = (T)region + minValue;
+        return (T)region + minValue;
     }
 
     constexpr static T GetMinValue()
