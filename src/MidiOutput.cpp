@@ -2,7 +2,6 @@
 #include <MIDI.h>
 #include <VirtualPinToNote.h>
 #include <Tempo.h>
-#include <UserControls.h>
 #include <StableAnalog.h>
 
 /// ===================================================================================
@@ -17,10 +16,10 @@ constexpr int8_t UPPER_KEY_SHIFT = 9;
 /// ===================================================================================
 /// Globals
 /// ===================================================================================
-uint8_t gUpperCh = 1;
-uint8_t gLowerCh = 1;
-int8_t gUpperOct = -1;
-int8_t gLowerOct = 3;
+AnalogSelector<uint8_t, 17, 0> gUpperCh;
+AnalogSelector<uint8_t, 17, 0> gLowerCh;
+AnalogSelector<int8_t, 5, -3> gUpperOct;
+AnalogSelector<int8_t, 5, 1> gLowerOct;
 uint8_t gPlayVelocity = 100;
 uint8_t gPlayingMetronomeNote = 0;
 MIDI_CREATE_DEFAULT_INSTANCE();
@@ -36,8 +35,11 @@ void MidiOutputSetup()
 {
 	MIDI.begin(MIDI_CHANNEL_OFF);
 
-    gUpperOct = GetAnalogSelectionValue(gapOctaveUpper, 5) - 3;
-    gLowerOct = GetAnalogSelectionValue(gapOctaveLower, 5) + 1;
+    gUpperCh.ForceSelection(gapMidiChUpper);
+    gLowerCh.ForceSelection(gapMidiChLower);
+
+    gUpperOct.ForceSelection(gapOctaveUpper);
+    gLowerOct.ForceSelection(gapOctaveLower);
 }
 
 
@@ -47,31 +49,10 @@ void UpdateMidiOutput()
 {
     PlayMetronome();
 
-    // Upper: -3, -2, -1, 0, 1
-    // Lower: 1, 2, 3, 4, 5
-    int8_t newUpOct = 0, newLowOct = 0;
-    
-    // Cast is ok because values are small
-    if (UpdateAnalogSelectionValue((uint8_t*)&newUpOct, gapOctaveUpper, 5))
-    {
-        newUpOct -= 3;
-
-        if (gUpperOct != newUpOct)
-        {
-            CancelAllNotes(true);
-        }
-        gUpperOct = newUpOct;
-    }
-    if (UpdateAnalogSelectionValue((uint8_t*)&newLowOct, gapOctaveLower, 5))
-    {
-        newLowOct += 1;
-
-        if (gLowerOct != newLowOct)
-        {
-            CancelAllNotes(false);
-        }
-        gLowerOct = newLowOct;
-    }
+    gUpperCh.UpdateSelection(gapMidiChUpper);
+    gLowerCh.UpdateSelection(gapMidiChLower);
+    gUpperOct.UpdateSelection(gapOctaveUpper);
+    gLowerOct.UpdateSelection(gapOctaveLower);
 }
 
 
@@ -103,7 +84,7 @@ void PlayMetronome()
 /// @brief Get the channel of either the upper or lower keybed
 uint8_t GetChannel(bool upper)
 {
-    return upper ? gUpperCh : gLowerCh;
+    return upper ? gUpperCh.mValue : gLowerCh.mValue;
 }
 
 
@@ -113,11 +94,11 @@ uint8_t KeyNumToNote(uint8_t keyNum)
 {
     if (IsUpperKey(keyNum))
     {
-        keyNum = keyNum + gUpperOct * 12 + UPPER_KEY_SHIFT;
+        keyNum = keyNum + gUpperOct.mValue * 12 + UPPER_KEY_SHIFT;
     }
     else
     {
-        keyNum = keyNum + gLowerOct * 12 + LOWER_KEY_SHIFT;
+        keyNum = keyNum + gLowerOct.mValue * 12 + LOWER_KEY_SHIFT;
     }
 
     return keyNum;

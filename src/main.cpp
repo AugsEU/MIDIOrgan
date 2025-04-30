@@ -22,7 +22,7 @@ uTimeMs gPrevTime;
 NotePressInfo gNoteStates[NUM_NOTES];
 
 #if PROFILING_ENABLED
-constexpr size_t LOOP_PROFILE_LIMIT = 1000;
+constexpr size_t LOOP_PROFILE_LIMIT = 10000;
 uTimeMs gFirstLoopTime = 0;
 size_t gLoopCount = 0;
 #endif // PROFILING_ENABLED
@@ -35,17 +35,20 @@ size_t gLoopCount = 0;
 /// @brief Arduino intrinsic. Prog entry point.
 void setup() 
 {
-	gTime = millis();
-	MidiOutputSetup();
 	LcdInit();
 
 	// Init pins
 	SetupPins();
+	ReadAllPins();
 
 	for (uint8_t i = 0; i < NUM_NOTES; i++)
 	{
 		gNoteStates[i] = NotePressInfo();
 	}
+	
+	MidiOutputSetup();
+	
+	gTime = millis();
 }
 
 

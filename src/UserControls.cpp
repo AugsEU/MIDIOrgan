@@ -98,7 +98,7 @@ void ReadAllPins()
 	ReadVirtualPins();
 
 #if READ_SECTIONS // Optimisation to only read some pins every update.
-switch (gReadSection)
+	switch (gReadSection)
 	{
 	case 0:
 		gdpArpSelectUpper.UpdateState(digitalRead(PIN_ARP_SELECT_UPPER));
@@ -164,45 +164,6 @@ switch (gReadSection)
 	gapKnob7 = analogRead(PINA_KNOB7);
 #endif
 }
-
-
-
-/// @brief For an analog input, get one of N selection values. But only update if not in a deadzone.
-/// @param pValue Output value
-/// @param analog Analog value
-/// @param divisions Number of values we can select from.
-/// @returns True if value not in deadzone
-bool UpdateAnalogSelectionValue(uint8_t* pValue, uint16_t analog, uint16_t divisions)
-{
-	uint16_t region = (analog * divisions) / ANALOG_MAX_VALUE;
-	uint16_t deadzoneSize = ANALOG_MAX_VALUE / (divisions * 4);
-
-	if ((analog + deadzoneSize) * divisions > (region + 1) * ANALOG_MAX_VALUE)
-	{
-		// In upper deadzone do not update
-		return false;
-	}
-
-	if ((analog < deadzoneSize) || (analog - deadzoneSize) * divisions < region * ANALOG_MAX_VALUE)
-	{
-		// In lower deadzone do not update
-		return false;
-	}
-
-	// Set to region
-	*pValue = (uint8_t)region;
-	return true;
-}
-
-/// @brief For an analog input, get one of N selection values.
-/// @param analog Analog value
-/// @param divisions Number of values we can select from.
-/// @return True if value not in deadzone
-uint8_t GetAnalogSelectionValue(uint16_t analog, uint16_t divisions)
-{
-	return (analog * divisions) / ANALOG_MAX_VALUE;
-}
-
 
 // Debug
 void DebugDigitalPins()

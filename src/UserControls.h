@@ -36,11 +36,52 @@ extern uint16_t gapKnob7;
 // Virtual multiplexer pins
 extern StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 
+template<typename T, uint8_t divisions, T minValue>
+struct AnalogSelector
+{
+    T mValue;
+
+    AnalogSelector()
+    {
+        mValue = 0;
+    }
+
+    void ForceSelection(uint16_t analog)
+    {
+        uint16_t region = (analog * divisions) / ANALOG_MAX_VALUE;
+        mValue = (T)region + minValue;
+    }
+
+    void UpdateSelection(uint16_t analog)
+    {
+        uint16_t region = (analog * divisions) / ANALOG_MAX_VALUE;
+        uint16_t deadzoneSize = ANALOG_MAX_VALUE / (divisions * 4);
+    
+        if ((analog + deadzoneSize) * divisions > (region + 1) * ANALOG_MAX_VALUE)
+        {
+            // In upper deadzone do not update
+            return;
+        }
+    
+        if ((analog < deadzoneSize) || (analog - deadzoneSize) * divisions < region * ANALOG_MAX_VALUE)
+        {
+            // In lower deadzone do not update
+            return;
+        }
+    
+        // Set to region
+        mValue = (T)region + minValue;
+    }
+
+    constexpr static T GetMinValue()
+    {
+        return minValue;
+    }
+};
+
 // Public funcs
 void SetupPins();
 void ReadAllPins();
-bool UpdateAnalogSelectionValue(uint8_t* pValue, uint16_t analog, uint16_t divisions);
-uint8_t GetAnalogSelectionValue(uint16_t analog, uint16_t divisions);
 
 // Debug
 void DebugDigitalPins();

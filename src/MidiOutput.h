@@ -1,12 +1,13 @@
 #include <Arduino.h>
+#include <UserControls.h>
 
 #ifndef MIDI_OUTPUT_H
 #define MIDI_OUTPUT_H
 
-extern uint8_t gUpperCh;
-extern uint8_t gLowerCh;
-extern int8_t gUpperOct;
-extern int8_t gLowerOct;
+extern AnalogSelector<uint8_t, 17, 0> gUpperCh;
+extern AnalogSelector<uint8_t, 17, 0> gLowerCh;
+extern AnalogSelector<int8_t, 5, -3> gUpperOct;
+extern AnalogSelector<int8_t, 5, 1> gLowerOct;
 
 void MidiOutputSetup();
 void UpdateMidiOutput();

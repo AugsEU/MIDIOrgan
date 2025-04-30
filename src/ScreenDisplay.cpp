@@ -73,10 +73,10 @@ void WriteGeneralInfo()
     {
     // Top line
     case 0:
-        gUpperOctSection.WriteToLcd(8, 0, gUpperOct + 1, buffer, 2);
+        gUpperOctSection.WriteToLcd(8, 0, gUpperOct.mValue, buffer, 2);
         break;
     case 1:
-        gUpperChSection.WriteToLcd(14, 0, gUpperCh, buffer, 2);
+        gUpperChSection.WriteToLcd(14, 0, gUpperCh.mValue, buffer, 2);
         break;
     // Bottom line.
     case 2:
@@ -84,10 +84,10 @@ void WriteGeneralInfo()
         gTempoSection.WriteToLcd(0, 1, gTempoCache, buffer, 4);
         break;
     case 3:
-        gLowerOctSection.WriteToLcd(7, 1, gLowerOct-3, buffer, 2);
+        gLowerOctSection.WriteToLcd(7, 1, gLowerOct.mValue, buffer, 2);
         break;
     case 4:
-        gLowerChSection.WriteToLcd(13, 1, gLowerCh, buffer, 2);
+        gLowerChSection.WriteToLcd(13, 1, gLowerCh.mValue, buffer, 2);
         break;
     }
 
