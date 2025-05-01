@@ -25,6 +25,7 @@ AnalogSelector<uint8_t, 17, 0> gUpperCh;
 AnalogSelector<uint8_t, 17, 0> gLowerCh;
 AnalogSelector<int8_t, 5, -3> gUpperOct;
 AnalogSelector<int8_t, 5, 1> gLowerOct;
+StableAnalog gTestKnob;
 uint8_t gPlayVelocity = 100;
 uint8_t gPlayingMetronomeNote = 0;
 uint8_t gBpMsgBuff[5];
@@ -86,6 +87,9 @@ void UpdateMidiOutput()
         CancelAllNotes(false);
         gLowerOct.mValue = nextValue;
     }
+
+    gTestKnob.ConsumeInput(gapKnob6);
+    SendMessageToBp(0, gTestKnob.mStableValue / 1024.0f);
 
     // Tempo
     if (On4Note(48))
