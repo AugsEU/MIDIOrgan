@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <UserControls.h>
+#include <Globals.h>
 
 #ifndef MIDI_OUTPUT_H
 #define MIDI_OUTPUT_H
 
+extern NotePressInfo gNoteStates[NUM_NOTES];
 extern AnalogSelector<uint8_t, 17, 0> gUpperCh;
 extern AnalogSelector<uint8_t, 17, 0> gLowerCh;
 extern AnalogSelector<int8_t, 5, -3> gUpperOct;
@@ -12,11 +14,16 @@ extern AnalogSelector<int8_t, 5, 1> gLowerOct;
 void MidiOutputSetup();
 void UpdateMidiOutput();
 
+void PlayNotesDirect(uint8_t keyStart, uint8_t keyEnd);
+
 void CancelAllNotes(bool upper);
+
 void SendNoteOn(uint8_t keyNum);
 void SendNoteOff(uint8_t keyNum);
-void SendNoteOn(uint8_t noteNum, bool upper);
-void SendNoteOff(uint8_t noteNum, bool upper);
+
+void SendNoteOn(uint8_t keyNum, uint8_t ch);
+void SendNoteOff(uint8_t keyNum, uint8_t ch);
+
 void SendNoteOnAllCh(uint8_t noteNum);
 void SendNoteOffAllCh(uint8_t noteNum);
 

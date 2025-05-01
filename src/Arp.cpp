@@ -76,55 +76,25 @@ void ReadArpMode()
 }
 
 
-
 /// @brief Update notes and send out arp notes to midi
 void PlayArp()
 {
-	// Update all keys.
-	for (uint8_t i = 0; i < NUM_NOTES; i++)
-	{
-		uint8_t vPinIdx = NOTES_VPIN_START + i;
-		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
-
-		bool prevPressed = gNoteStates[i].mPressed;
-		gNoteStates[i].ChangeState(vPinState, gTime);
-
-		uint8_t keyNum = VirtualPinToKeyNum(i);
-
-		bool shouldPlayNormally = (!gdpArpSelectLower.IsActive() && !IsUpperKey(keyNum))
-								|| (!gdpArpSelectUpper.IsActive() && IsUpperKey(keyNum));
-
-		if (!shouldPlayNormally)
-		{
-			continue;
-		}
-
-		bool pressed = gNoteStates[i].mPressed;
-
-		if (pressed)
-		{
-			if (!prevPressed)
-			{
-				SendNoteOn(keyNum);
-			}
-		}
-		else
-		{
-			if (prevPressed)
-			{
-				SendNoteOff(keyNum);
-			}
-		}
-	}
-
 	if (gdpArpSelectLower.IsActive())
 	{
 		gLowerArp.PlayNotes(0, NUM_LOWER_KEYS);
 	}
+	else
+	{
+		PlayNotesDirect(0, NUM_LOWER_KEYS);
+	}
 	
 	if (gdpArpSelectUpper.IsActive())
 	{
-		gUpperArp.PlayNotes(NUM_LOWER_KEYS, NUM_NOTES);
+		gUpperArp.PlayNotes(NUM_LOWER_KEYS, NUM_LOWER_KEYS + NUM_UPPER_KEYS);
+	}
+	else
+	{
+		PlayNotesDirect(NUM_LOWER_KEYS, NUM_LOWER_KEYS + NUM_UPPER_KEYS);
 	}
 }
 
@@ -145,9 +115,14 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 
 	for (uint8_t keyNum = keyStart; keyNum < keyEnd; keyNum++)
 	{
-		uint8_t noteIdx = KeyNumToVirtualPin(keyNum) - NOTES_VPIN_START;
+		uint8_t vPinIdx = KeyNumToVirtualPin(keyNum);
+
+		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
+
+		NotePressInfo* pNoteInfo = &gNoteStates[vPinIdx - NOTES_VPIN_START];
+		pNoteInfo->ChangeState(vPinState, gTime);
 		
-		bool pressed = gNoteStates[noteIdx].mPressed;
+		bool pressed = pNoteInfo->mPressed;
 
 		if (pressed)
 		{

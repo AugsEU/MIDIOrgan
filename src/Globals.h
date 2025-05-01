@@ -8,6 +8,5 @@
 
 extern uTimeMs gTime;
 extern uTimeMs gPrevTime;
-extern NotePressInfo gNoteStates[NUM_NOTES];
 
 #endif // GLOBALS_H

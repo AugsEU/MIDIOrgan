@@ -11,15 +11,13 @@
 #include <ScreenDisplay.h>
 #include <UserControls.h>
 
-#define PROFILING_ENABLED 1
+#define PROFILING_ENABLED 0
 
 /// ===================================================================================
 /// Members
 /// ===================================================================================
 uTimeMs gTime;
 uTimeMs gPrevTime;
-
-NotePressInfo gNoteStates[NUM_NOTES];
 
 #if PROFILING_ENABLED
 constexpr size_t LOOP_PROFILE_LIMIT = 10000;
@@ -59,37 +57,6 @@ void setup()
 /// Update
 /// ===================================================================================
 
-/// @brief Play keys like a regular piano.
-void PlayNotesDirect()
-{
-	for (int i = 0; i < NUM_NOTES; i++)
-	{
-		uint8_t vPinIdx = NOTES_VPIN_START + i;
-		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
-		
-		bool prevPressed = gNoteStates[i].mPressed;
-		gNoteStates[i].ChangeState(vPinState, gTime);
-
-		uint8_t keyNum = VirtualPinToKeyNum(i);
-		bool pressed = gNoteStates[i].mPressed;
-
-		if (pressed)
-		{
-			if (!prevPressed)
-			{
-				SendNoteOn(keyNum);
-			}
-		}
-		else
-		{
-			if (prevPressed)
-			{
-				SendNoteOff(keyNum);
-			}
-		}
-	}
-}
-
 //-- Arduino intrinsic. Runs in loop.
 void loop()
 {
@@ -108,7 +75,7 @@ void loop()
 	}
 	else
 	{
-		PlayNotesDirect();
+		PlayNotesDirect(0, NUM_NOTES);
 	}
 
 	// VPIN TEST

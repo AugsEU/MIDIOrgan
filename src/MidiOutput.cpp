@@ -2,6 +2,7 @@
 #include <MIDI.h>
 #include <VirtualPinToNote.h>
 #include <Tempo.h>
+#include <NotePressInfo.h>
 #include <StableAnalog.h>
 
 /// ===================================================================================
@@ -11,20 +12,26 @@ constexpr uint8_t METRONOME_NOTE = 82;
 constexpr int8_t LOWER_KEY_SHIFT = 5;
 constexpr int8_t UPPER_KEY_SHIFT = 9;
 
+constexpr uint8_t BP_CMD_NOTE_ON = 0xC0;
+constexpr uint8_t BP_CMD_NOTE_OFF = 0x80;
 
 
 /// ===================================================================================
 /// Globals
 /// ===================================================================================
+NotePressInfo gNoteStates[NUM_NOTES];
+
 AnalogSelector<uint8_t, 17, 0> gUpperCh;
 AnalogSelector<uint8_t, 17, 0> gLowerCh;
 AnalogSelector<int8_t, 5, -3> gUpperOct;
 AnalogSelector<int8_t, 5, 1> gLowerOct;
 uint8_t gPlayVelocity = 100;
 uint8_t gPlayingMetronomeNote = 0;
+uint8_t gBpMsgBuff[5];
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-
+void SendMessageToBp();
+void SendMessageToBp(const uint8_t paramNum, const float value);
 
 /// ===================================================================================
 /// Setup & Update
@@ -33,6 +40,9 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 /// @brief Setup midi
 void MidiOutputSetup()
 {
+    // TX1 line is the private line to the internal synth
+    Serial1.begin(115200);
+
 	MIDI.begin(MIDI_CHANNEL_OFF);
 
     gUpperCh.ForceSelection(gapMidiChUpper);
@@ -76,6 +86,44 @@ void UpdateMidiOutput()
         CancelAllNotes(false);
         gLowerOct.mValue = nextValue;
     }
+
+    // Tempo
+    if (On4Note(48))
+    {
+        MIDI.sendClock();
+    }
+}
+
+
+/// @brief Play keys like a regular piano.
+void PlayNotesDirect(uint8_t keyStart, uint8_t keyEnd)
+{
+	for (uint8_t keyNum = keyStart; keyNum < keyEnd; keyNum++)
+	{
+		uint8_t vPinIdx = KeyNumToVirtualPin(keyNum);
+		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
+		
+        NotePressInfo* pPressInfo = &gNoteStates[vPinIdx - NOTES_VPIN_START];
+        
+		bool prevPressed = pPressInfo->mPressed;
+		pPressInfo->ChangeState(vPinState, gTime);
+		bool pressed = pPressInfo->mPressed;
+
+		if (pressed)
+		{
+			if (!prevPressed)
+			{
+				SendNoteOn(keyNum);
+			}
+		}
+		else
+		{
+			if (prevPressed)
+			{
+				SendNoteOff(keyNum);
+			}
+		}
+	}
 }
 
 
@@ -135,8 +183,9 @@ uint8_t KeyNumToNote(uint8_t keyNum)
 void SendNoteOn(uint8_t keyNum)
 {
     bool isUpper = IsUpperKey(keyNum);
-    uint8_t noteNum = KeyNumToNote(keyNum);
-    MIDI.sendNoteOn(noteNum, gPlayVelocity, GetChannel(isUpper));
+    uint8_t ch = GetChannel(isUpper);
+
+    SendNoteOn(keyNum, ch);
 }
 
 
@@ -145,24 +194,49 @@ void SendNoteOn(uint8_t keyNum)
 void SendNoteOff(uint8_t keyNum)
 {
     bool isUpper = IsUpperKey(keyNum);
+    uint8_t ch = GetChannel(isUpper);
+
+    SendNoteOff(keyNum, ch);
+}
+
+
+
+/// @brief Send a note on.
+void SendNoteOn(uint8_t keyNum, uint8_t ch)
+{
     uint8_t noteNum = KeyNumToNote(keyNum);
-    MIDI.sendNoteOff(noteNum, gPlayVelocity, GetChannel(isUpper));
+
+    if (ch == 0)
+    {
+        gBpMsgBuff[0] = BP_CMD_NOTE_ON;
+        gBpMsgBuff[1] = noteNum;
+        gBpMsgBuff[2] = gPlayVelocity;
+        SendMessageToBp();
+    }
+    else
+    {
+        MIDI.sendNoteOn(noteNum, gPlayVelocity, ch);
+    }
 }
 
 
 
-/// @brief Play note on certain channel
-void SendNoteOn(uint8_t noteNum, bool upper)
+/// @brief Send a note off.
+void SendNoteOff(uint8_t keyNum, uint8_t ch)
 {
-    MIDI.sendNoteOn(noteNum, gPlayVelocity, GetChannel(upper));
-}
+    uint8_t noteNum = KeyNumToNote(keyNum);
 
-
-
-/// @brief Unplay note on certain channel
-void SendNoteOff(uint8_t noteNum, bool upper)
-{
-    MIDI.sendNoteOff(noteNum, 0, GetChannel(upper));
+    if (ch == 0)
+    {
+        gBpMsgBuff[0] = BP_CMD_NOTE_OFF;
+        gBpMsgBuff[1] = noteNum;
+        gBpMsgBuff[2] = gPlayVelocity;
+        SendMessageToBp();
+    }
+    else
+    {
+        MIDI.sendNoteOff(noteNum, gPlayVelocity, ch);
+    }
 }
 
 
@@ -170,9 +244,9 @@ void SendNoteOff(uint8_t noteNum, bool upper)
 /// @brief Play note on every channel
 void SendNoteOnAllCh(uint8_t noteNum)
 {
-    for(uint8_t ch = 1; ch <= 16; ch++)
+    for(uint8_t ch = 0; ch <= 16; ch++)
     {
-        MIDI.sendNoteOn(noteNum, gPlayVelocity, ch);
+        SendNoteOn(noteNum, ch);
     }
 }
 
@@ -181,9 +255,9 @@ void SendNoteOnAllCh(uint8_t noteNum)
 /// @brief Cancel note on every channel
 void SendNoteOffAllCh(uint8_t noteNum)
 {
-    for(uint8_t ch = 1; ch <= 16; ch++)
+    for(uint8_t ch = 0; ch <= 16; ch++)
     {
-        MIDI.sendNoteOff(noteNum, 0, ch);
+        SendNoteOff(noteNum, ch);
     }
 }
 
@@ -197,7 +271,37 @@ void CancelAllNotes(bool upper)
     uint8_t keyNum = upper ? NUM_LOWER_KEYS : 0;
     for(uint8_t i = 0; i < NUM_NOTES/2; i++)
     {
-        uint8_t noteNum = KeyNumToNote(keyNum++);
-        MIDI.sendNoteOff(noteNum, 0, GetChannel(upper));
+        SendNoteOff(keyNum++);
     }
+}
+
+
+
+/// @brief Send a message to the BP synth
+void SendMessageToBp()
+{
+    constexpr uint8_t BUFF_SIZE = sizeof(gBpMsgBuff);
+
+    for (uint8_t i = 0; i < BUFF_SIZE; i++)
+    {
+        Serial1.write(gBpMsgBuff[i]);
+    }
+}
+
+
+/// @brief Send a message to the BP synth
+void SendMessageToBp(const uint8_t paramNum, const float value)
+{
+    gBpMsgBuff[0] = paramNum & 0x7F;
+
+    float* floatPtr = reinterpret_cast<float*>(gBpMsgBuff + 1);
+    *floatPtr = value;
+
+    SendMessageToBp();
+}
+
+void SendMessageToBp(const uint8_t header)
+{
+    gBpMsgBuff[0] = header;
+    SendMessageToBp();
 }
