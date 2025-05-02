@@ -4,6 +4,7 @@
 #include <Tempo.h>
 #include <NotePressInfo.h>
 #include <StableAnalog.h>
+#include <AugSynthParams.h>
 
 /// ===================================================================================
 /// Constants
@@ -25,14 +26,30 @@ AnalogSelector<uint8_t, 17, 0> gUpperCh;
 AnalogSelector<uint8_t, 17, 0> gLowerCh;
 AnalogSelector<int8_t, 5, -3> gUpperOct;
 AnalogSelector<int8_t, 5, 1> gLowerOct;
-StableAnalog gTestKnob;
 uint8_t gPlayVelocity = 100;
 uint8_t gPlayingMetronomeNote = 0;
 uint8_t gBpMsgBuff[5];
+
+#if AUG_SYNTH_DEBUG
+AugSynthValueCategory gDebugSynthCat = AugSynthValueCategory::ENV;
+
+AnalogSelector<uint8_t, 5, 0> gCatSelector;
+
+StableAnalog gKnob2;
+StableAnalog gKnob3;
+StableAnalog gKnob4;
+StableAnalog gKnob5;
+StableAnalog gKnob6;
+StableAnalog gKnob7;
+
+uint8_t gParamToSend = 0;
+#endif // AUG_SYNTH DEBUG
+
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 void SendMessageToBp();
 void SendMessageToBp(const uint8_t paramNum, const float value);
+void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index, const float value);
 
 /// ===================================================================================
 /// Setup & Update
@@ -46,11 +63,27 @@ void MidiOutputSetup()
 
 	MIDI.begin(MIDI_CHANNEL_OFF);
 
+#if !AUG_SYNTH_DEBUG
     gUpperCh.ForceSelection(gapMidiChUpper);
     gLowerCh.ForceSelection(gapMidiChLower);
 
     gUpperOct.ForceSelection(gapOctaveUpper);
     gLowerOct.ForceSelection(gapOctaveLower);
+#else // !AUG_SYNTH_DEBUG
+    gUpperCh.ForceSelection(0);
+    gLowerCh.ForceSelection(0);
+
+    gUpperOct.ForceSelection(512);
+    gLowerOct.ForceSelection(256);
+
+    gCatSelector.ForceSelection(gapMidiChLower);
+    gKnob2.ConsumeInput(gapMidiChUpper);
+    gKnob3.ConsumeInput(gapOctaveLower);
+    gKnob4.ConsumeInput(gapOctaveLower);
+    gKnob5.ConsumeInput(gapTempo);
+    gKnob6.ConsumeInput(gapKnob6);
+    gKnob7.ConsumeInput(gapKnob7);
+#endif // !AUG_SYNTH_DEBUG
 }
 
 
@@ -60,6 +93,7 @@ void UpdateMidiOutput()
 {
     PlayMetronome();
 
+#if !AUG_SYNTH_DEBUG
     uint8_t unextValue = gUpperCh.CalcNextSelection(gapMidiChUpper);
     if(gUpperCh.mValue != unextValue)
     {
@@ -87,9 +121,47 @@ void UpdateMidiOutput()
         CancelAllNotes(false);
         gLowerOct.mValue = nextValue;
     }
+#else // !AUG_SYNTH_DEBUG
+    gCatSelector.mValue = gCatSelector.CalcNextSelection(gapMidiChLower);
 
-    gTestKnob.ConsumeInput(gapKnob6);
-    SendMessageToBp(0, gTestKnob.mStableValue / 1024.0f);
+    gKnob2.ConsumeInput(gapMidiChUpper);
+    gKnob3.ConsumeInput(gapOctaveLower);
+    gKnob4.ConsumeInput(gapOctaveUpper);
+    gKnob5.ConsumeInput(gapTempo);
+    gKnob6.ConsumeInput(gapKnob6);
+    gKnob7.ConsumeInput(gapKnob7);
+
+    AugSynthValueCategory category = (AugSynthValueCategory)gCatSelector.mValue;
+
+    switch (gParamToSend)
+    {
+    case 0:
+        SetAugSynthParam(category, 0, gKnob2.ToUnitFloat() *  1.032f);
+        break;
+    case 1:
+        SetAugSynthParam(category, 1, gKnob3.ToUnitFloat() *  1.032f);
+        break;
+    case 2:
+        SetAugSynthParam(category, 2, gKnob4.ToUnitFloat() *  1.032f);
+        break;
+    case 3:
+        SetAugSynthParam(category, 3, gKnob5.ToUnitFloat() *  1.032f);
+        break;
+    case 4:
+        SetAugSynthParam(category, 4, gKnob6.ToUnitFloat() *  1.032f);
+        break;
+    case 5:
+        SetAugSynthParam(category, 5, gKnob7.ToUnitFloat() *  1.032f);
+        break;
+    }
+
+    gParamToSend++;
+    if (gParamToSend >= 6)
+    {
+        gParamToSend = 0;
+    }
+#endif // !AUG_SYNTH_DEBUG
+
 
     // Tempo
     if (On4Note(48))
@@ -290,6 +362,8 @@ void SendMessageToBp()
     {
         Serial1.write(gBpMsgBuff[i]);
     }
+
+    delayMicroseconds(50); // let bp interupt finish
 }
 
 
@@ -304,8 +378,120 @@ void SendMessageToBp(const uint8_t paramNum, const float value)
     SendMessageToBp();
 }
 
-void SendMessageToBp(const uint8_t header)
+
+/// @brief Set a parameter on the aug synth
+/// @param category Category
+/// @param index Param num in category
+/// @param value Value to set
+void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index, const float value)
 {
-    gBpMsgBuff[0] = header;
-    SendMessageToBp();
+    switch (category)
+    {
+    case AugSynthValueCategory::General:
+        switch (index)
+        {
+        case 0:
+            SendMessageToBp(ASP_TUNING, value);
+            break;
+        case 1:
+            SendMessageToBp(ASP_DRIVE, value);
+            break;
+        case 2:
+            SendMessageToBp(ASP_GAIN, value);
+            break;
+        }
+        break;
+    case AugSynthValueCategory::DCO:
+        switch (index)
+        {
+        case 0:
+            SendMessageToBp(ASP_DCO_WAVE_SHAPE_1, value);
+            break;
+        case 1:
+            SendMessageToBp(ASP_DCO_WAVE_TUNE_1, value);
+            break;
+        case 2:
+            SendMessageToBp(ASP_DCO_WAVE_LFO_1, value);
+            break;
+        case 3:
+            SendMessageToBp(ASP_DCO_WAVE_SHAPE_2, value);
+            break;
+        case 4:
+            SendMessageToBp(ASP_DCO_WAVE_TUNE_2, value);
+            break;
+        case 5:
+            SendMessageToBp(ASP_DCO_WAVE_LFO_2, value);
+            break;
+        }
+        break;
+    case AugSynthValueCategory::VCF:
+        switch (index)
+        {
+        case 0:
+            SendMessageToBp(ASP_VCF_CUTOFF, value);
+            break;
+        case 1:
+            SendMessageToBp(ASP_VCF_RES, value);
+            break;
+        case 2:
+            SendMessageToBp(ASP_VCF_MODE, value);
+            break;
+        case 3:
+            SendMessageToBp(ASP_VCF_CUTOFF_LFO, value);
+            break;
+        case 4:
+            SendMessageToBp(ASP_VCF_RES_LFO, value);
+            break;
+        case 5:
+            SendMessageToBp(ASP_VCF_ENV1, value);
+            break;
+        }
+        break;
+    case AugSynthValueCategory::LFO:
+        switch (index)
+        {
+        case 0:
+            SendMessageToBp(ASP_LFO_RATE, value);
+            break;
+        case 1:
+            SendMessageToBp(ASP_LFO_WAVE_SHAPE, value);
+            break;
+        case 2:
+            SendMessageToBp(ASP_LFO_ATTACK, value);
+            break;
+        case 3:
+            SendMessageToBp(ASP_LFO_GAIN, value);
+            break;
+        case 4:
+            SendMessageToBp(ASP_LFO_OSC1_VOLUME, value);
+            break;
+        case 5:
+            SendMessageToBp(ASP_LFO_OSC2_VOLUME, value);
+            break;
+        }
+        break;
+    case AugSynthValueCategory::ENV:
+        switch (index)
+        {
+        case 0:
+            SendMessageToBp(ASP_ENV_ATTACK1, value);
+            break;
+        case 1:
+            SendMessageToBp(ASP_ENV_SUSTAIN1, value);
+            break;
+        case 2:
+            SendMessageToBp(ASP_ENV_DECAY1, value);
+            break;
+        case 3:
+            SendMessageToBp(ASP_ENV_ATTACK2, value);
+            break;
+        case 4:
+            SendMessageToBp(ASP_ENV_SUSTAIN2, value);
+            break;
+        case 5:
+            SendMessageToBp(ASP_ENV_DECAY2, value);
+            break;
+        }
+        break;
+    }
 }

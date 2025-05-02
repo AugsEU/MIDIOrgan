@@ -2,6 +2,8 @@
 #include <UserControls.h>
 #include <Globals.h>
 
+#define AUG_SYNTH_DEBUG 1
+
 #ifndef MIDI_OUTPUT_H
 #define MIDI_OUTPUT_H
 
@@ -10,6 +12,10 @@ extern AnalogSelector<uint8_t, 17, 0> gUpperCh;
 extern AnalogSelector<uint8_t, 17, 0> gLowerCh;
 extern AnalogSelector<int8_t, 5, -3> gUpperOct;
 extern AnalogSelector<int8_t, 5, 1> gLowerOct;
+
+#if AUG_SYNTH_DEBUG
+extern AnalogSelector<uint8_t, 5, 0> gCatSelector;
+#endif // AUG_SYNTH_DEBUG
 
 void MidiOutputSetup();
 void UpdateMidiOutput();

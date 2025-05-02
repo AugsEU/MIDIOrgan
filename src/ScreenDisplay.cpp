@@ -87,7 +87,11 @@ void WriteGeneralInfo()
         gLowerOctSection.WriteToLcd(7, 1, gLowerOct.mValue - 3, buffer, 2);
         break;
     case 4:
+#if !AUG_SYNTH_DEBUG
         gLowerChSection.WriteToLcd(13, 1, gLowerCh.mValue, buffer, 2);
+#else // !AUG_SYNTH_DEBUG
+        gLowerChSection.WriteToLcd(13, 1, gCatSelector.mValue, buffer, 2);
+#endif // !AUG_SYNTH_DEBUG
         break;
     }
 

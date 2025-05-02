@@ -45,6 +45,8 @@ void setup()
 	}
 	
 	MidiOutputSetup();
+
+	delay(100); // Delay to make sure BP synth is online.
 	
 	gTime = millis();
 }

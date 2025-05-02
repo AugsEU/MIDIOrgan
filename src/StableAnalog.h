@@ -9,6 +9,7 @@ struct StableAnalog
 
     // Update the stabilized value with a new raw reading
     void ConsumeInput(uint16_t analog);
+    float ToUnitFloat();
 };
 
 #endif // STABLE_ANALOG_H
