@@ -399,6 +399,15 @@ void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index,
         case 2:
             SendMessageToBp(ASP_GAIN, value);
             break;
+        case 3:
+            SendMessageToBp(ASP_DELAY_TIME, value);
+            break;
+        case 4:
+            SendMessageToBp(ASP_DELAY_FEEDBACK, value);
+            break;
+        case 5:
+            SendMessageToBp(ASP_GENERAL_UNUSED, value);
+            break;
         }
         break;
     case AugSynthValueCategory::DCO:
@@ -408,19 +417,19 @@ void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index,
             SendMessageToBp(ASP_DCO_WAVE_SHAPE_1, value);
             break;
         case 1:
-            SendMessageToBp(ASP_DCO_WAVE_TUNE_1, value);
+            SendMessageToBp(ASP_DCO_TUNE_1, value);
             break;
         case 2:
-            SendMessageToBp(ASP_DCO_WAVE_LFO_1, value);
+            SendMessageToBp(ASP_DCO_VOL_1, value);
             break;
         case 3:
             SendMessageToBp(ASP_DCO_WAVE_SHAPE_2, value);
             break;
         case 4:
-            SendMessageToBp(ASP_DCO_WAVE_TUNE_2, value);
+            SendMessageToBp(ASP_DCO_TUNE_2, value);
             break;
         case 5:
-            SendMessageToBp(ASP_DCO_WAVE_LFO_2, value);
+            SendMessageToBp(ASP_DCO_VOL_2, value);
             break;
         }
         break;
@@ -463,10 +472,10 @@ void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index,
             SendMessageToBp(ASP_LFO_GAIN, value);
             break;
         case 4:
-            SendMessageToBp(ASP_LFO_OSC1_VOLUME, value);
+            SendMessageToBp(ASP_LFO_OSC1_TUNE, value);
             break;
         case 5:
-            SendMessageToBp(ASP_LFO_OSC2_VOLUME, value);
+            SendMessageToBp(ASP_LFO_OSC2_TUNE, value);
             break;
         }
         break;
