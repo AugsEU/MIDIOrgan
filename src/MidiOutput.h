@@ -2,7 +2,7 @@
 #include <UserControls.h>
 #include <Globals.h>
 
-#define AUG_SYNTH_DEBUG 1
+#define AUG_SYNTH_DEBUG 0
 
 #ifndef MIDI_OUTPUT_H
 #define MIDI_OUTPUT_H

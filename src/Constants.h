@@ -32,6 +32,8 @@ constexpr uint8_t PINA_TEMPO = PIN_A10;
 constexpr uint8_t PINA_KNOB6 = PIN_A12;
 constexpr uint8_t PINA_KNOB7 = PIN_A11;
 
+constexpr uint8_t PINA_PEDAL = PIN_A7;
+
 
 // Keys
 constexpr uint8_t PIN_MUX_START = 23;
