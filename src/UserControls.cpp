@@ -1,7 +1,11 @@
 #include <StableState.h>
 #include <UserControls.h>
+#include <StableAnalog.h>
 
 #define READ_SECTIONS 0
+
+constexpr uint16_t PEDAL_MIN = 20;
+constexpr uint16_t PEDAL_MAX = 915;
 
 StableState gdpArpSelectUpper;
 StableState gdpArpSelectLower;
@@ -25,6 +29,8 @@ uint16_t gapOctaveLower;
 uint16_t gapTempo;
 uint16_t gapKnob6;
 uint16_t gapKnob7;
+StableAnalog gStablePedal;
+uint32_t gPedalValueCache = 0;
 
 StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 
@@ -162,7 +168,26 @@ void ReadAllPins()
 	gapTempo = analogRead(PINA_TEMPO);
 	gapKnob6 = analogRead(PINA_KNOB6);
 	gapKnob7 = analogRead(PINA_KNOB7);
+
+	char debugBuff[64];
+	gStablePedal.ConsumeInput(analogRead(PINA_PEDAL));
+	{
+		constexpr uint32_t PEDAL_RANGE = PEDAL_MAX - PEDAL_MIN;
+	
+		gPedalValueCache = gStablePedal.mStableValue; // need 32 to avoid overflow
+		gPedalValueCache = min(gPedalValueCache, PEDAL_MAX);
+		gPedalValueCache = max(gPedalValueCache, PEDAL_MIN); // clamp
+
+		gPedalValueCache = PEDAL_MAX - gPedalValueCache; //Invert to because of wiring
+		gPedalValueCache <<= ANALOG_READ_RESOLUTION_BITS;
+		gPedalValueCache /= PEDAL_RANGE;
+	}
 #endif
+}
+
+uint16_t GetPedalStable()
+{
+	return gPedalValueCache;
 }
 
 // Debug

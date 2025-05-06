@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Constants.h>
 #include <StableState.h>
+#include <StableAnalog.h>
 
 #ifndef USER_CONTROLS_H
 #define USER_CONTROLS_H
@@ -81,6 +82,7 @@ struct AnalogSelector
 // Public funcs
 void SetupPins();
 void ReadAllPins();
+uint16_t GetPedalStable();
 
 // Debug
 void DebugDigitalPins();

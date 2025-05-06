@@ -166,7 +166,7 @@ void UpdateMidiOutput()
     // Tempo
     if (On4Note(48))
     {
-        MIDI.sendClock();
+        //MIDI.sendClock();
     }
 }
 
