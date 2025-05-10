@@ -5,6 +5,7 @@
 #include <NotePressInfo.h>
 #include <StableAnalog.h>
 #include <AugSynthParams.h>
+#include <ScreenDisplay.h>
 
 /// ===================================================================================
 /// Constants
@@ -12,23 +13,35 @@
 constexpr uint8_t METRONOME_NOTE = 82;
 constexpr int8_t LOWER_KEY_SHIFT = 5;
 constexpr int8_t UPPER_KEY_SHIFT = 9;
+constexpr uint8_t DEFAULT_PLAY_VELOCITY = 100;
 
 constexpr uint8_t BP_CMD_NOTE_ON = 0xC0;
 constexpr uint8_t BP_CMD_NOTE_OFF = 0x80;
+
+constexpr uint8_t MIDI_CC_MOD_WHEEL = 1;
+constexpr uint8_t MIDI_CC_EXPRESSION = 11;
 
 
 /// ===================================================================================
 /// Globals
 /// ===================================================================================
 NotePressInfo gNoteStates[NUM_NOTES];
-
 AnalogSelector<uint8_t, 17, 0> gUpperCh;
 AnalogSelector<uint8_t, 17, 0> gLowerCh;
 AnalogSelector<int8_t, 5, -3> gUpperOct;
 AnalogSelector<int8_t, 5, 1> gLowerOct;
-uint8_t gPlayVelocity = 100;
+
+AnalogSelector<uint8_t, NUM_PEDAL_MODES, 0> gPedalModeSelect;
+AnalogSelector<uint8_t, NUM_PEDAL_MIDI_CH, 0> gPedalMidiChSelect;
+AnalogSelector<uint8_t, NUM_PEDAL_INTERNAL_PARAMS, 0> gPedalInternalParamSelect;
+
+uint8_t gPedalVelocity = DEFAULT_PLAY_VELOCITY;
 uint8_t gPlayingMetronomeNote = 0;
 uint8_t gBpMsgBuff[5];
+
+PedalMode gPedalMode;
+PedalMidiCh gPedalMidiCh;
+PedalInternalParam gPedalInternal;
 
 #if AUG_SYNTH_DEBUG
 AugSynthValueCategory gDebugSynthCat = AugSynthValueCategory::ENV;
@@ -51,6 +64,8 @@ void SendMessageToBp();
 void SendMessageToBp(const uint8_t paramNum, const float value);
 void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index, const float value);
 
+void ResetPedalForModeChange();
+
 /// ===================================================================================
 /// Setup & Update
 /// ===================================================================================
@@ -69,6 +84,10 @@ void MidiOutputSetup()
 
     gUpperOct.ForceSelection(gapOctaveUpper);
     gLowerOct.ForceSelection(gapOctaveLower);
+
+    gPedalModeSelect.ForceSelection(gapPedalMode);
+    gPedalMidiChSelect.ForceSelection(gapPedalSelect);
+    gPedalInternalParamSelect.ForceSelection(gapPedalSelect);
 #else // !AUG_SYNTH_DEBUG
     gUpperCh.ForceSelection(0);
     gLowerCh.ForceSelection(0);
@@ -84,6 +103,10 @@ void MidiOutputSetup()
     gKnob6.ConsumeInput(gapKnob6);
     gKnob7.ConsumeInput(gapKnob7);
 #endif // !AUG_SYNTH_DEBUG
+
+    gPedalMode = (PedalMode)gPedalModeSelect.mValue;
+    gPedalMidiCh = (PedalMidiCh)gPedalMidiChSelect.mValue;
+    gPedalInternal = (PedalInternalParam)gPedalInternalParamSelect.mValue;
 }
 
 
@@ -94,6 +117,7 @@ void UpdateMidiOutput()
     PlayMetronome();
 
 #if !AUG_SYNTH_DEBUG
+    // Midi ch
     uint8_t unextValue = gUpperCh.CalcNextSelection(gapMidiChUpper);
     if(gUpperCh.mValue != unextValue)
     {
@@ -108,6 +132,34 @@ void UpdateMidiOutput()
         gLowerCh.mValue = unextValue;
     }
 
+    // Pedal
+    unextValue = gPedalModeSelect.CalcNextSelection(gapPedalMode);
+    if (gPedalModeSelect.mValue != unextValue)
+    {
+        gPedalModeSelect.mValue = unextValue;
+        SetScreenPage(ScreenPage::SP_PEDAL_INFO);
+    }
+
+    if (GetPedalMode() == PedalMode::PM_INTERNAL)
+    {
+        unextValue = gPedalInternalParamSelect.CalcNextSelection(gapPedalSelect);
+        if (gPedalInternalParamSelect.mValue != unextValue)
+        {
+            gPedalInternalParamSelect.mValue = unextValue;
+            SetScreenPage(ScreenPage::SP_PEDAL_INFO);
+        }
+    }
+    else // Midi channel based param
+    {
+        unextValue = gPedalMidiChSelect.CalcNextSelection(gapPedalSelect);
+        if (gPedalMidiChSelect.mValue != unextValue)
+        {
+            gPedalMidiChSelect.mValue = unextValue;
+            SetScreenPage(ScreenPage::SP_PEDAL_INFO);
+        }
+    }
+
+    // Octave
     int8_t nextValue = gUpperOct.CalcNextSelection(gapOctaveUpper);
     if (gUpperOct.mValue != nextValue)
     {
@@ -162,11 +214,22 @@ void UpdateMidiOutput()
     }
 #endif // !AUG_SYNTH_DEBUG
 
-
-    // Tempo
-    if (On4Note(48))
+    // Only want to apply settings while on general info.
+    if (gCurrScreenPage == ScreenPage::SP_GENERAL_INFO)
     {
-        //MIDI.sendClock();
+        PedalMode nextPedalMode = (PedalMode)gPedalModeSelect.mValue;
+        PedalMidiCh nextPedalMidiCh = (PedalMidiCh)gPedalMidiChSelect.mValue;
+        PedalInternalParam nextPedalInternalParam = (PedalInternalParam)gPedalInternalParamSelect.mValue;
+
+        if(nextPedalMode != gPedalMode || nextPedalMidiCh != gPedalMidiCh || nextPedalInternalParam != gPedalInternal)
+        {
+            ResetPedalForModeChange();
+            gPedalMode = nextPedalMode;
+            gPedalMidiCh = nextPedalMidiCh;
+            gPedalInternal = nextPedalInternalParam;
+        }
+
+        UpdatePedal();
     }
 }
 
@@ -207,6 +270,12 @@ void PlayNotesDirect(uint8_t keyStart, uint8_t keyEnd)
 /// @brief Play the metronome
 void PlayMetronome()
 {
+    // Tempo messages
+    if (On4Note(48))
+    {
+        MIDI.sendClock();
+    }
+
     bool noteOn = On4Note(2);
     bool noteOff = !noteOn && On4Note(16);
     uint8_t note = METRONOME_NOTE;
@@ -227,6 +296,30 @@ void PlayMetronome()
 /// ===================================================================================
 /// Utils
 /// ===================================================================================
+
+/// @brief Get the current pedal mode
+PedalMode GetPedalMode()
+{
+    return (PedalMode)gPedalModeSelect.mValue;
+}
+
+
+
+/// @brief Get the pedal midi ch selection
+PedalMidiCh GetPedalMidiCh()
+{
+    return (PedalMidiCh)gPedalMidiChSelect.mValue;
+}
+
+
+
+/// @brief Get pedal internal param
+PedalInternalParam GetPedalInternalParam()
+{
+    return (PedalInternalParam)gPedalInternalParamSelect.mValue;
+}
+
+
 
 /// @brief Get the channel of either the upper or lower keybed
 uint8_t GetChannel(bool upper)
@@ -281,17 +374,18 @@ void SendNoteOff(uint8_t keyNum)
 void SendNoteOn(uint8_t keyNum, uint8_t ch)
 {
     uint8_t noteNum = KeyNumToNote(keyNum);
+    uint8_t vel = ChannelIsPedal(ch) ? gPedalVelocity : DEFAULT_PLAY_VELOCITY;
 
     if (ch == 0)
     {
         gBpMsgBuff[0] = BP_CMD_NOTE_ON;
         gBpMsgBuff[1] = noteNum;
-        gBpMsgBuff[2] = gPlayVelocity;
+        gBpMsgBuff[2] = vel;
         SendMessageToBp();
     }
     else
     {
-        MIDI.sendNoteOn(noteNum, gPlayVelocity, ch);
+        MIDI.sendNoteOn(noteNum, vel, ch);
     }
 }
 
@@ -301,17 +395,18 @@ void SendNoteOn(uint8_t keyNum, uint8_t ch)
 void SendNoteOff(uint8_t keyNum, uint8_t ch)
 {
     uint8_t noteNum = KeyNumToNote(keyNum);
+    uint8_t vel = ChannelIsPedal(ch) ? gPedalVelocity : DEFAULT_PLAY_VELOCITY;
 
     if (ch == 0)
     {
         gBpMsgBuff[0] = BP_CMD_NOTE_OFF;
         gBpMsgBuff[1] = noteNum;
-        gBpMsgBuff[2] = gPlayVelocity;
+        gBpMsgBuff[2] = vel;
         SendMessageToBp();
     }
     else
     {
-        MIDI.sendNoteOff(noteNum, gPlayVelocity, ch);
+        MIDI.sendNoteOff(noteNum, vel, ch);
     }
 }
 
@@ -351,7 +446,136 @@ void CancelAllNotes(bool upper)
     }
 }
 
+/// ===================================================================================
+/// Pedal
+/// ===================================================================================
 
+bool SendPedalMidiCC(PedalMode mode, uint8_t value, uint8_t ch)
+{
+    switch (mode)
+    {
+    case PM_MODULATION:
+        MIDI.sendControlChange(MIDI_CC_MOD_WHEEL, value, ch);
+        return true;
+    case PM_VOLUME:
+        MIDI.sendControlChange(MIDI_CC_EXPRESSION, value, ch);
+        return true;
+    }
+
+    return false;
+}
+
+/// @brief Send a CC message for the pedal's value
+bool SendPedalMidiCC(PedalMode mode, uint8_t value)
+{
+    switch (gPedalMidiCh)
+    {
+    case PMC_LOWER:
+        return SendPedalMidiCC(mode, value, gLowerCh.mValue);
+    case PMC_UPPER:
+        return SendPedalMidiCC(mode, value, gUpperCh.mValue);
+    case PMC_UPPER_LOWER:
+        return SendPedalMidiCC(mode, value, gUpperCh.mValue) && SendPedalMidiCC(mode, value, gLowerCh.mValue);
+    default:
+        uint8_t ch = (gPedalMidiCh + 1) - (PMC_MIDI_CH1);
+        return SendPedalMidiCC(mode, value, ch);
+    }
+}
+
+bool SendPedalPitchBend(int value, uint8_t ch)
+{
+    MIDI.sendPitchBend(value, ch);
+}
+
+bool SendPedalPitchBend(int value)
+{
+    switch (gPedalMidiCh)
+    {
+    case PMC_LOWER:
+        return SendPedalPitchBend(value, gLowerCh.mValue);
+    case PMC_UPPER:
+        return SendPedalPitchBend(value, gUpperCh.mValue);
+    case PMC_UPPER_LOWER:
+        return SendPedalPitchBend(value, gUpperCh.mValue) && SendPedalPitchBend(value, gLowerCh.mValue);
+    default:
+        uint8_t ch = (gPedalMidiCh + 1) - (PMC_MIDI_CH1);
+        return SendPedalPitchBend(value, ch);
+    }
+}
+
+/// @brief Call this before changing any pedal parameters
+void ResetPedalForModeChange()
+{
+    switch (gPedalMode)
+    {
+        case PM_VELOCITY:
+            gPedalVelocity = DEFAULT_PLAY_VELOCITY;
+            break;
+        case PM_PITCH_BEND:
+            SendPedalPitchBend(0);
+            break;
+        case PM_MODULATION:
+            SendPedalMidiCC(PM_MODULATION, 0);
+            break;
+        case PM_VOLUME:
+            SendPedalMidiCC(PM_VOLUME, 127);
+            break;
+        case PM_INTERNAL:
+            break; //@TODO Internal synth
+    }
+}
+
+bool ChannelIsPedal(uint8_t ch)
+{
+    if(gPedalMode == PM_OFF || gPedalMode == PM_INTERNAL)
+    {
+        return false;
+    }
+
+    switch (gPedalMidiCh)
+    {
+    case PMC_LOWER:
+        return ch == gLowerCh.mValue;
+    case PMC_UPPER:
+        return ch == gUpperCh.mValue;
+    case PMC_UPPER_LOWER:
+        return ch == gUpperCh.mValue || ch == gLowerCh.mValue;
+    default:
+        uint8_t ch = (gPedalMidiCh + 1) - (PMC_MIDI_CH1);
+        return ch == ch;
+    }
+}
+
+void UpdatePedal()
+{
+    uint32_t pedalVal = GetPedalStable();
+    uint8_t pedal7 = (uint8_t)(min(pedalVal >> 3, 127)); // 10 bits -> 7
+    int pitchBend;
+
+    switch (gPedalMode)
+    {
+        case PM_VELOCITY:
+            gPedalVelocity = pedal7;
+            break;
+        case PM_PITCH_BEND:
+            pitchBend = (int)(pedalVal << 4) - MIDI_PITCHBEND_MAX; // 10 bits -> 14 bits
+            pitchBend = max(min(pitchBend, MIDI_PITCHBEND_MAX), MIDI_PITCHBEND_MIN);
+            SendPedalPitchBend(pitchBend);
+            break;
+        case PM_MODULATION:
+            SendPedalMidiCC(PM_MODULATION, pedal7);
+            break;
+        case PM_VOLUME:
+            SendPedalMidiCC(PM_VOLUME, pedal7);
+            break;
+        case PM_INTERNAL:
+            break; //@TODO Internal synth
+    }
+}
+
+/// ===================================================================================
+/// Aug Synth
+/// ===================================================================================
 
 /// @brief Send a message to the BP synth
 void SendMessageToBp()

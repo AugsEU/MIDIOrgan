@@ -27,8 +27,8 @@ uint16_t gapMidiChLower;
 uint16_t gapOctaveUpper;
 uint16_t gapOctaveLower;
 uint16_t gapTempo;
-uint16_t gapKnob6;
-uint16_t gapKnob7;
+uint16_t gapPedalMode;
+uint16_t gapPedalSelect;
 StableAnalog gStablePedal;
 uint32_t gPedalValueCache = 0;
 
@@ -166,10 +166,9 @@ void ReadAllPins()
 	gapArpGate = analogRead(PINA_ARP_GATE);
 	gapMidiChUpper = analogRead(PINA_MIDI_CH_UPPER);
 	gapTempo = analogRead(PINA_TEMPO);
-	gapKnob6 = analogRead(PINA_KNOB6);
-	gapKnob7 = analogRead(PINA_KNOB7);
+	gapPedalMode = analogRead(PINA_KNOB6);
+	gapPedalSelect = analogRead(PINA_KNOB7);
 
-	char debugBuff[64];
 	gStablePedal.ConsumeInput(analogRead(PINA_PEDAL));
 	{
 		constexpr uint32_t PEDAL_RANGE = PEDAL_MAX - PEDAL_MIN;
@@ -185,7 +184,7 @@ void ReadAllPins()
 #endif
 }
 
-uint16_t GetPedalStable()
+uint32_t GetPedalStable()
 {
 	return gPedalValueCache;
 }
@@ -222,8 +221,8 @@ void DebugAnalogPins()
 		gapOctaveUpper,
 		gapOctaveLower,
 		gapTempo,
-		gapKnob6,
-		gapKnob7
+		gapPedalMode,
+		gapPedalSelect
 	);
 
 	Serial.println(msgBuff);

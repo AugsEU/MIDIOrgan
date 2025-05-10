@@ -31,8 +31,8 @@ extern uint16_t gapMidiChLower;
 extern uint16_t gapOctaveUpper;
 extern uint16_t gapOctaveLower;
 extern uint16_t gapTempo;
-extern uint16_t gapKnob6;
-extern uint16_t gapKnob7;
+extern uint16_t gapPedalMode;
+extern uint16_t gapPedalSelect;
 
 // Virtual multiplexer pins
 extern StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
@@ -56,19 +56,35 @@ struct AnalogSelector
     T CalcNextSelection(uint16_t analog)
     {
         uint16_t region = (analog * divisions) / ANALOG_MAX_VALUE;
-        uint16_t deadzoneSize = ANALOG_MAX_VALUE / (divisions * 4);
-    
-        if ((analog + deadzoneSize) * divisions > (region + 1) * ANALOG_MAX_VALUE)
+
+        constexpr uint16_t deadzoneSize = ANALOG_MAX_VALUE / (divisions * 4);
+        uint16_t prevRegion = (uint16_t)(mValue - minValue);
+        if (region == prevRegion + 1) // Going to region 1 above
         {
-            // In upper deadzone do not update
-            return mValue;
+            if(analog * divisions <= prevRegion * ANALOG_MAX_VALUE + deadzoneSize * divisions)
+            {
+                return mValue;
+            }
+        }
+        else if(region + 1 == prevRegion) // Going to region 1 below
+        {
+            if((analog + deadzoneSize) * divisions >= prevRegion * ANALOG_MAX_VALUE)
+            {
+                return mValue;
+            }
         }
     
-        if ((analog < deadzoneSize) || (analog - deadzoneSize) * divisions < region * ANALOG_MAX_VALUE)
-        {
-            // In lower deadzone do not update
-            return mValue;
-        }
+        // if ((analog + deadzoneSize) * divisions > (mValue + 1) * ANALOG_MAX_VALUE)
+        // {
+        //     // In upper deadzone do not update
+        //     return mValue;
+        // }
+    
+        // if ((analog < deadzoneSize) || (analog - deadzoneSize) * divisions < mValue * ANALOG_MAX_VALUE)
+        // {
+        //     // In lower deadzone do not update
+        //     return mValue;
+        // }
     
         return (T)region + minValue;
     }
@@ -82,7 +98,7 @@ struct AnalogSelector
 // Public funcs
 void SetupPins();
 void ReadAllPins();
-uint16_t GetPedalStable();
+uint32_t GetPedalStable();
 
 // Debug
 void DebugDigitalPins();
