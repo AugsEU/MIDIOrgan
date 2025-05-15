@@ -611,7 +611,7 @@ void SendMessageToBp(const uint8_t paramNum, const float value)
     SendMessageToBp();
 }
 
-
+#if AUG_SYNTH_DEBUG
 /// @brief Set a parameter on the aug synth
 /// @param category Category
 /// @param index Param num in category
@@ -737,3 +737,4 @@ void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index,
         break;
     }
 }
+#endif // AUG_SYNTH_DEBUG
