@@ -1,9 +1,9 @@
 #include <MidiOutput.h>
 #include <MIDI.h>
-#include <VirtualPinToNote.h>
+#include <Util/VirtualPinToNote.h>
 #include <Tempo.h>
-#include <NotePressInfo.h>
-#include <StableAnalog.h>
+#include <Input/NotePressInfo.h>
+#include <Input/StableAnalog.h>
 #include <AugSynthParams.h>
 #include <ScreenDisplay.h>
 
@@ -639,7 +639,7 @@ void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index,
             SendMessageToBp(ASP_DELAY_FEEDBACK, value);
             break;
         case 5:
-            SendMessageToBp(ASP_GENERAL_UNUSED, value);
+            SendMessageToBp(ASP_DELAY_SHEAR, value);
             break;
         }
         break;

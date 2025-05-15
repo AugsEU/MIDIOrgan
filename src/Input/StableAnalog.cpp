@@ -1,4 +1,4 @@
-#include <StableAnalog.h>
+#include <Input/StableAnalog.h>
 #include <UserControls.h>
 
 constexpr uint32_t ALPHA = 32; // Smoothing factor

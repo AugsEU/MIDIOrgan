@@ -7,7 +7,8 @@
 #define ASP_GAIN                2
 #define ASP_DELAY_TIME          3
 #define ASP_DELAY_FEEDBACK      4
-#define ASP_GENERAL_UNUSED      5
+#define ASP_DELAY_SHEAR         5
+#define ASP_DELAY_MODE          6
 
 // DCO
 #define ASP_DCO_WAVE_SHAPE_1    6

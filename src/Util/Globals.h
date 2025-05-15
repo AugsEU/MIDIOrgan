@@ -1,7 +1,7 @@
 #include <Arduino.h>
-#include <TimeInfo.h>
-#include <NotePressInfo.h>
-#include <Constants.h>
+#include <Util/TimeInfo.h>
+#include <Input/NotePressInfo.h>
+#include <Util/Constants.h>
 
 #ifndef GLOBALS_H
 #define GLOBALS_H

@@ -1,11 +1,11 @@
 #include <Arp.h>
-#include <Globals.h>
-#include <VirtualPinToNote.h>
+#include <Util/Globals.h>
+#include <Util/VirtualPinToNote.h>
 #include <Tempo.h>
-#include <FixedArray.h>
+#include <Util/FixedArray.h>
 #include <MidiOutput.h>
 #include <UserControls.h>
-#include <StableAnalog.h>
+#include <Input/StableAnalog.h>
 
 /// ===================================================================================
 /// Constants

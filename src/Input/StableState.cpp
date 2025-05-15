@@ -1,4 +1,4 @@
-#include <StableState.h>
+#include <Input/StableState.h>
 
 constexpr uint8_t ENABLE_THRESH = 16;
 constexpr uint8_t STATE_MAX = 32;

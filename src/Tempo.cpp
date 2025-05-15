@@ -1,7 +1,7 @@
 #include <Tempo.h>
-#include <Globals.h>
+#include <Util/Globals.h>
 #include <UserControls.h>
-#include <StableAnalog.h>
+#include <Input/StableAnalog.h>
 
 uTimeMs gTempoInterval = 500; // Quarter note interval in milliseconds
 uTimeMs gTempoTicker = 0;

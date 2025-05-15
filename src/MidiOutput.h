@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <UserControls.h>
-#include <Globals.h>
+#include <Util/Globals.h>
 
 #define AUG_SYNTH_DEBUG 0
 

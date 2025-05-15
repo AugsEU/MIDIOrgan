@@ -1,5 +1,5 @@
-#include <VirtualPinToNote.h>
-#include <Constants.h>
+#include <Util/VirtualPinToNote.h>
+#include <Util/Constants.h>
 
 // These used to be the way the keys were ordered but now they are ordered more logically.
 // constexpr uint8_t VPIN_TO_KEY_NUM[88] =

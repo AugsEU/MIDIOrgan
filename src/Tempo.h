@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <TimeInfo.h>
+#include <Util/TimeInfo.h>
 
 #ifndef TEMPO_H
 #define TEMPO_H

@@ -1,6 +1,6 @@
 #include <Arduino.h>
-#include <TimeInfo.h>
-#include <Constants.h>
+#include <Util/TimeInfo.h>
+#include <Util/Constants.h>
 
 #ifndef ARP_H
 #define ARP_H

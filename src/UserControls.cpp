@@ -1,6 +1,6 @@
-#include <StableState.h>
+#include <Input/StableState.h>
 #include <UserControls.h>
-#include <StableAnalog.h>
+#include <Input/StableAnalog.h>
 #include "wiring_private.h"
 #include "pins_arduino.h"
 

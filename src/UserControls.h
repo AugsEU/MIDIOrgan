@@ -1,7 +1,7 @@
 #include <Arduino.h>
-#include <Constants.h>
-#include <StableState.h>
-#include <StableAnalog.h>
+#include <Util/Constants.h>
+#include <Input/StableState.h>
+#include <Input/StableAnalog.h>
 
 #ifndef USER_CONTROLS_H
 #define USER_CONTROLS_H

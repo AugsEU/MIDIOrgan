@@ -1,7 +1,7 @@
 #include <ScreenDisplay.h>
 #include <Wire.h>
-#include <Globals.h>
-#include <TimeInfo.h>
+#include <Util/Globals.h>
+#include <Util/TimeInfo.h>
 #include <Tempo.h>
 #include <MidiOutput.h>
 
