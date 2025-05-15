@@ -1,0 +1,10 @@
+Perf
+ReadVirtualPins()
+    Baseline: 0.54ms
+    Portread: 0.28ms
+    Port read with good delay: 0.36ms
+
+ReadAllPins()
+    Baseline: 1.41ms | Digital only: 0.39ms
+    Digital ports: 1.34ms
+    With partial analog reads: 0.47ms

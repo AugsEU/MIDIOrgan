@@ -119,7 +119,7 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 
 		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
 
-		NotePressInfo* pNoteInfo = &gNoteStates[vPinIdx - NOTES_VPIN_START];
+		NotePressInfo* pNoteInfo = &gNoteStates[keyNum];
 		pNoteInfo->ChangeState(vPinState, gTime);
 		
 		bool pressed = pNoteInfo->mPressed;

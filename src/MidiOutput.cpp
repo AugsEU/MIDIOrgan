@@ -114,7 +114,7 @@ void MidiOutputSetup()
 /// @brief Update midi, should be called every loop.
 void UpdateMidiOutput()
 {
-    //PlayMetronome();
+    PlayMetronome();
 
 #if !AUG_SYNTH_DEBUG
     // Midi ch
@@ -229,7 +229,7 @@ void UpdateMidiOutput()
             gPedalInternal = nextPedalInternalParam;
         }
 
-        //UpdatePedal();
+        UpdatePedal();
     }
 }
 
@@ -242,7 +242,7 @@ void PlayNotesDirect(uint8_t keyStart, uint8_t keyEnd)
 		uint8_t vPinIdx = KeyNumToVirtualPin(keyNum);
 		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
 		
-        NotePressInfo* pPressInfo = &gNoteStates[vPinIdx - NOTES_VPIN_START];
+        NotePressInfo* pPressInfo = &gNoteStates[keyNum];
         
 		bool prevPressed = pPressInfo->mPressed;
 		pPressInfo->ChangeState(vPinState, gTime);
@@ -460,6 +460,8 @@ bool SendPedalMidiCC(PedalMode mode, uint8_t value, uint8_t ch)
     case PM_VOLUME:
         MIDI.sendControlChange(MIDI_CC_EXPRESSION, value, ch);
         return true;
+    default:
+        break;
     }
 
     return false;
@@ -485,6 +487,7 @@ bool SendPedalMidiCC(PedalMode mode, uint8_t value)
 bool SendPedalPitchBend(int value, uint8_t ch)
 {
     MIDI.sendPitchBend(value, ch);
+    return true;
 }
 
 bool SendPedalPitchBend(int value)
@@ -522,6 +525,8 @@ void ResetPedalForModeChange()
             break;
         case PM_INTERNAL:
             break; //@TODO Internal synth
+        default:
+            break;
     }
 }
 
@@ -570,6 +575,10 @@ void UpdatePedal()
             break;
         case PM_INTERNAL:
             break; //@TODO Internal synth
+        case PM_OFF:
+            break;
+        default:
+            break;
     }
 }
 

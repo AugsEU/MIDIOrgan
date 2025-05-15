@@ -60,7 +60,7 @@ constexpr uint8_t PIN_MUX_S2 = 53;
 
 constexpr size_t NUM_VIRTUAL_MUX_PIN = NUM_MUX_PIN * 8; // 8-to-1 mux chips
 
-constexpr size_t NOTES_VPIN_START = 0;
+constexpr size_t NOTES_VPIN_START = 8;
 constexpr uint8_t NUM_NOTES = 88;
 constexpr uint8_t NOTE_START = 10;
 
