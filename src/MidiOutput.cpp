@@ -114,7 +114,7 @@ void MidiOutputSetup()
 /// @brief Update midi, should be called every loop.
 void UpdateMidiOutput()
 {
-    PlayMetronome();
+    //PlayMetronome();
 
 #if !AUG_SYNTH_DEBUG
     // Midi ch
@@ -229,7 +229,7 @@ void UpdateMidiOutput()
             gPedalInternal = nextPedalInternalParam;
         }
 
-        UpdatePedal();
+        //UpdatePedal();
     }
 }
 
@@ -541,8 +541,8 @@ bool ChannelIsPedal(uint8_t ch)
     case PMC_UPPER_LOWER:
         return ch == gUpperCh.mValue || ch == gLowerCh.mValue;
     default:
-        uint8_t ch = (gPedalMidiCh + 1) - (PMC_MIDI_CH1);
-        return ch == ch;
+        uint8_t pedalCh = (gPedalMidiCh + 1) - (PMC_MIDI_CH1);
+        return ch == pedalCh;
     }
 }
 

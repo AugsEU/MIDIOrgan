@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <PortMap.h>
 
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
@@ -23,6 +24,21 @@ constexpr uint8_t PIN_LOOP2 = 44;
 constexpr uint8_t PIN_LOOP3 = 40;
 constexpr uint8_t PIN_LOOP4 = 43;
 
+#define PORT_ARP_SELECT_UPPER 	PORT_DPIN_50
+#define PORT_ARP_SELECT_LOWER 	PORT_DPIN_49
+#define PORT_ARP_HOLD 			PORT_DPIN_48
+#define PORT_ARP_UP 			PORT_DPIN_47
+#define PORT_ARP_DOWN 			PORT_DPIN_39
+#define PORT_ARP_SPEC 			PORT_DPIN_42
+#define PORT_ARP_FAST 			PORT_DPIN_38
+#define PORT_ARP_SLOW 			PORT_DPIN_46
+
+#define PORT_METRONOME 			PORT_DPIN_45
+#define PORT_LOOP1 				PORT_DPIN_41
+#define PORT_LOOP2 				PORT_DPIN_44
+#define PORT_LOOP3 				PORT_DPIN_40
+#define PORT_LOOP4 				PORT_DPIN_43
+
 constexpr uint8_t PINA_ARP_GATE = PIN_A15;
 constexpr uint8_t PINA_MIDI_CH_UPPER = PIN_A10;
 constexpr uint8_t PINA_MIDI_CH_LOWER = PIN_A14;
@@ -36,8 +52,8 @@ constexpr uint8_t PINA_PEDAL = PIN_A7; // 922 - 9
 
 
 // Keys
-constexpr uint8_t PIN_MUX_START = 23;
-constexpr uint8_t NUM_MUX_PIN = 11;
+constexpr uint8_t PIN_MUX_START = 22;
+constexpr uint8_t NUM_MUX_PIN = 14;
 constexpr uint8_t PIN_MUX_S0 = 51;
 constexpr uint8_t PIN_MUX_S1 = 52;
 constexpr uint8_t PIN_MUX_S2 = 53;

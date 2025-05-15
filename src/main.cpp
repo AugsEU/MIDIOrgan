@@ -11,6 +11,9 @@
 #include <ScreenDisplay.h>
 #include <UserControls.h>
 
+#define VPIN_TEST 0
+#define DPIN_TEST 0
+#define APIN_TEST 0
 #define PROFILING_ENABLED 0
 
 /// ===================================================================================
@@ -80,21 +83,23 @@ void loop()
 		PlayNotesDirect(0, NUM_NOTES);
 	}
 
-	// VPIN TEST
-	// for (uint8_t i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)
-	// {
-	// 	if(gVirtualMuxPins[i].IsActive())
-	// 	{
-	// 		Serial.println(gVirtualMuxPins[i].mState);
-	// 	}
-	// }
+#if VPIN_TEST
+	for (uint8_t i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)
+	{
+		if(gVirtualMuxPins[i].IsActive())
+		{
+			Serial.println(i);
+		}
+	}
+#endif // VPIN_TEST
 
-	// SWITCH TEST
-	// uint8_t midiChTest = 0;
-	// GetAnalogSelectionValue(&midiChTest, gapMidiChUpper, 17);
-	// Serial.println(midiChTest);
-	// DebugDigitalPins();
-	//DebugAnalogPins();
+#if DPIN_TEST
+	DebugDigitalPins();
+#endif // DPIN_TEST
+
+#if APIN_TEST
+	DebugAnalogPins();
+#endif // APIN_TEST
 
 #if PROFILING_ENABLED
 	if (gLoopCount == 0)
