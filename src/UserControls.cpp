@@ -263,19 +263,19 @@ void ReadAllPins()
 	ReadVirtualPins();
 
 #if DIRECT_PORT_READ
-	gdpArpSelectUpper.UpdateState(PORT_ARP_SELECT_UPPER == 0);
-	gdpArpSelectLower.UpdateState(PORT_ARP_SELECT_LOWER == 0);
-	gdpArpHold.UpdateState(PORT_ARP_HOLD == 0);
-	gdpArpUp.UpdateState(PORT_ARP_UP != 0);
-	gdpArpDown.UpdateState(PORT_ARP_DOWN != 0);
-	gdpArpSpec.UpdateState(PORT_ARP_SPEC != 0);
-	gdpArpFast.UpdateState(PORT_ARP_FAST != 0);
-	gdpArpSlow.UpdateState(PORT_ARP_SLOW != 0);
-	gdpMetronome.UpdateState(PORT_METRONOME == 0);
-	gdpLoop1.UpdateState(PORT_LOOP1 == 0);
-	gdpLoop2.UpdateState(PORT_LOOP2 == 0);
-	gdpLoop3.UpdateState(PORT_LOOP3 == 0);
-	gdpLoop4.UpdateState(PORT_LOOP4 == 0);
+	gdpArpSelectUpper.UpdateState(PORT_ARP_SELECT_UPPER != 0);
+	gdpArpSelectLower.UpdateState(PORT_ARP_SELECT_LOWER != 0);
+	gdpArpHold.UpdateState(PORT_ARP_HOLD != 0);
+	gdpArpUp.UpdateState(PORT_ARP_UP == 0);
+	gdpArpDown.UpdateState(PORT_ARP_DOWN == 0);
+	gdpArpSpec.UpdateState(PORT_ARP_SPEC == 0);
+	gdpArpFast.UpdateState(PORT_ARP_FAST == 0);
+	gdpArpSlow.UpdateState(PORT_ARP_SLOW == 0);
+	gdpMetronome.UpdateState(PORT_METRONOME != 0);
+	gdpLoop1.UpdateState(PORT_LOOP1 != 0);
+	gdpLoop2.UpdateState(PORT_LOOP2 != 0);
+	gdpLoop3.UpdateState(PORT_LOOP3 != 0);
+	gdpLoop4.UpdateState(PORT_LOOP4 != 0);
 #else
 	gdpArpSelectUpper.UpdateState(digitalRead(PIN_ARP_SELECT_UPPER));
 	gdpArpSelectLower.UpdateState(digitalRead(PIN_ARP_SELECT_LOWER));
