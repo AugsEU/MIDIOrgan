@@ -2,27 +2,29 @@
 #include <Util/Constants.h>
 #include <Input/StableState.h>
 #include <Input/StableAnalog.h>
+#include <Input/RotaryEncoder.h>
 
 #ifndef USER_CONTROLS_H
 #define USER_CONTROLS_H
 
 constexpr uint8_t ANALOG_READ_RESOLUTION_BITS = 10;
 constexpr uint16_t ANALOG_MAX_VALUE = 1 << ANALOG_READ_RESOLUTION_BITS;
+constexpr uint8_t NUM_ROTARY_ENCODERS = 7;
 
 // Global digital pins
-extern StableState gdpArpSelectUpper;
-extern StableState gdpArpSelectLower;
-extern StableState gdpArpHold;
-extern StableState gdpArpUp;
-extern StableState gdpArpDown;
-extern StableState gdpArpSpec;
-extern StableState gdpArpFast;
-extern StableState gdpArpSlow;
-extern StableState gdpMetronome;
-extern StableState gdpLoop1;
-extern StableState gdpLoop2;
-extern StableState gdpLoop3;
-extern StableState gdpLoop4;
+extern StableState<16> gdpArpSelectUpper;
+extern StableState<16> gdpArpSelectLower;
+extern StableState<16> gdpArpHold;
+extern StableState<16> gdpArpUp;
+extern StableState<16> gdpArpDown;
+extern StableState<16> gdpArpSpec;
+extern StableState<16> gdpArpFast;
+extern StableState<16> gdpArpSlow;
+extern StableState<16> gdpMetronome;
+extern StableState<16> gdpLoop1;
+extern StableState<16> gdpLoop2;
+extern StableState<16> gdpLoop3;
+extern StableState<16> gdpLoop4;
 
 // Global analog pins
 extern uint16_t gapArpGate;
@@ -35,7 +37,8 @@ extern uint16_t gapPedalMode;
 extern uint16_t gapPedalSelect;
 
 // Virtual multiplexer pins
-extern StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
+extern StableState<16> gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
+extern RotaryEncoder gRotaryEncoders[NUM_ROTARY_ENCODERS];
 
 template<typename T, uint8_t divisions, T minValue>
 struct AnalogSelector
@@ -98,6 +101,7 @@ struct AnalogSelector
 // Public funcs
 void SetupPins();
 void ReadAllPins();
+void PollRotaryEncoders();
 uint32_t GetPedalStable();
 
 // Debug

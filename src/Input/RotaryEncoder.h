@@ -5,10 +5,16 @@
 
 struct RotaryEncoder
 {
-    bool mPrevLeft = false;
-    bool mPrevRight = false;
+    bool mPrevLeft : 1;
+    bool mPrevRight : 1;
+    int mLatch : 4;
 
-    int8_t UpdateDial(bool left, bool right);
+    int8_t mValue;
+
+    RotaryEncoder();
+
+    void UpdateDial(bool left, bool right);
+    int8_t ConsumeDelta();
 };
 
 #endif // ROTARY_ENCODER_H

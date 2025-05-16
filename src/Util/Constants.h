@@ -53,10 +53,13 @@ constexpr uint8_t PINA_PEDAL = PIN_A7; // 922 - 9
 
 // Keys
 constexpr uint8_t PIN_MUX_START = 22;
-constexpr uint8_t NUM_MUX_PIN = 14;
+constexpr uint8_t NUM_MUX_PIN = 12;
 constexpr uint8_t PIN_MUX_S0 = 51;
 constexpr uint8_t PIN_MUX_S1 = 52;
 constexpr uint8_t PIN_MUX_S2 = 53;
+
+constexpr uint8_t PIN_MUX_RE_LEFT = 34;
+constexpr uint8_t PIN_MUX_RE_RIGHT = 35;
 
 constexpr size_t NUM_VIRTUAL_MUX_PIN = NUM_MUX_PIN * 8; // 8-to-1 mux chips
 

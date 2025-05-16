@@ -1,11 +1,9 @@
 #include <Arduino.h>
-#include <Input/RotaryEncoder.h>
 #include <math.h>
+#include <AugSynthParams.h>
 
 #ifndef AUG_SYNTH_H
 #define AUG_SYNTH_H
-
-constexpr uint8_t NUM_SYNTH_PAGES = 5;
 
 struct AugSynthParam
 {
@@ -14,25 +12,29 @@ struct AugSynthParam
     int8_t mMaxValue;
     int8_t mMinValue;
 
+    AugSynthParam() {};
     AugSynthParam(uint8_t paramNum, int8_t value, int8_t minValue, int8_t maxValue);
     void ApplyDelta(int8_t delta);
+
+    void WriteToScreenBuff(char* buff);
 
     float GetFloatValue();
 };
 
 struct AugSynthDial
 {
-    RotaryEncoder mEncoder;
-    AugSynthParam* mParamters[NUM_SYNTH_PAGES];
-    AugSynthParam* mShiftParamters[NUM_SYNTH_PAGES];
+    AugSynthParam* mParamters[AugSynthPage::NUM_SYNTH_PAGES];
+    AugSynthParam* mShiftParamters[AugSynthPage::NUM_SYNTH_PAGES];
 
     AugSynthDial();
 
-    void UpdateValue(bool left, bool right, bool pressed);
+    void UpdateValue(int8_t delta, bool pressed, char* buff);
 };
 
 void InitAugSynth();
 void InitSynthPatch();
+void BindDialsToParams();
+
 void UpdateAugSynth();
 
 #endif // AUG_SYNTH_H

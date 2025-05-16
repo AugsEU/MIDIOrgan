@@ -10,20 +10,22 @@
 constexpr uint16_t PEDAL_MIN = 20;
 constexpr uint16_t PEDAL_MAX = 915;
 constexpr int ANALOG_READ_CYCLES = 16;
+constexpr uint8_t ROTARY_IDXS_L[] = { 10, 8, 11, 14, 12, 9, 13};
+constexpr uint8_t ROTARY_IDXS_R[] = { 3,  4,  6,  0,  5, 1,  2};
 
-StableState gdpArpSelectUpper;
-StableState gdpArpSelectLower;
-StableState gdpArpHold;
-StableState gdpArpUp;
-StableState gdpArpDown;
-StableState gdpArpSpec;
-StableState gdpArpFast;
-StableState gdpArpSlow;
-StableState gdpMetronome;
-StableState gdpLoop1;
-StableState gdpLoop2;
-StableState gdpLoop3;
-StableState gdpLoop4;
+StableState<16> gdpArpSelectUpper;
+StableState<16> gdpArpSelectLower;
+StableState<16> gdpArpHold;
+StableState<16> gdpArpUp;
+StableState<16> gdpArpDown;
+StableState<16> gdpArpSpec;
+StableState<16> gdpArpFast;
+StableState<16> gdpArpSlow;
+StableState<16> gdpMetronome;
+StableState<16> gdpLoop1;
+StableState<16> gdpLoop2;
+StableState<16> gdpLoop3;
+StableState<16> gdpLoop4;
 
 uint16_t gapArpGate;
 uint16_t gapMidiChUpper;
@@ -37,7 +39,9 @@ uint16_t gapPedalValue;
 StableAnalog gStablePedal;
 uint32_t gPedalValueCache = 0;
 
-StableState gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
+StableState<16> gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
+RotaryEncoder gRotaryEncoders[NUM_ROTARY_ENCODERS];
+StableState<3> gRotaryEncoderMuxPins[8*2];
 
 uint8_t gAnalogReadSection = 0;
 uint8_t gAnalogReadingPin = 0xFF;
@@ -56,6 +60,8 @@ void SetupPins()
 		uint8_t pinNum = i + PIN_MUX_START;
 		pinMode(pinNum, INPUT_PULLUP);
 	}
+	pinMode(PIN_MUX_RE_LEFT, INPUT_PULLUP);
+	pinMode(PIN_MUX_RE_RIGHT, INPUT_PULLUP);
 
 	pinMode(PIN_ARP_SELECT_UPPER, INPUT_PULLUP);
 	pinMode(PIN_ARP_SELECT_LOWER, INPUT_PULLUP);
@@ -200,6 +206,40 @@ void EndAnalogReadForMux()
 	}
 }
 
+void UpdateRotaryEncoders()
+{
+	for(uint8_t i = 0; i < NUM_ROTARY_ENCODERS; i++)
+	{
+		bool left = gRotaryEncoderMuxPins[ROTARY_IDXS_L[i]].IsActive();
+		bool right = gRotaryEncoderMuxPins[ROTARY_IDXS_R[i]].IsActive();
+		gRotaryEncoders[i].UpdateDial(left, right);
+	}
+}
+
+void PollRotaryEncoders()
+{
+	uint8_t idx = 0;
+	for (uint8_t s2 = 0; s2 <= 1; s2++)
+	{
+		digitalWrite(PIN_MUX_S2, s2 ? LOW : HIGH);
+		for (uint8_t s1 = 0; s1 <= 1; s1++)
+		{
+			digitalWrite(PIN_MUX_S1, s1 ? LOW : HIGH);
+			for (uint8_t s0 = 0; s0 <= 1; s0++)
+			{
+				digitalWrite(PIN_MUX_S0, s0 ? LOW : HIGH);
+				delayMicroseconds(7);
+
+				idx = 4*s2 + 2*s1 + s0;
+				gRotaryEncoderMuxPins[idx].UpdateState(PORT_DPIN_34 == 0);
+				gRotaryEncoderMuxPins[idx+8].UpdateState(PORT_DPIN_35 == 0);
+			}
+		}
+	}
+
+	UpdateRotaryEncoders();
+}
+
 void ReadVirtualPins()
 {
 	uint8_t idx = 0;
@@ -234,8 +274,9 @@ void ReadVirtualPins()
 				gVirtualMuxPins[idx+8*9] .UpdateState(PORT_DPIN_31 == 0);
 				gVirtualMuxPins[idx+8*10].UpdateState(PORT_DPIN_32 == 0);
 				gVirtualMuxPins[idx+8*11].UpdateState(PORT_DPIN_33 == 0);
-				gVirtualMuxPins[idx+8*12].UpdateState(PORT_DPIN_34 == 0);
-				gVirtualMuxPins[idx+8*13].UpdateState(PORT_DPIN_35 == 0);
+
+				gRotaryEncoderMuxPins[idx].UpdateState(PORT_DPIN_34 == 0);
+				gRotaryEncoderMuxPins[idx+8].UpdateState(PORT_DPIN_35 == 0);
 #else
 				for(uint8_t i = 0; i < NUM_MUX_PIN; i++)
 				{
@@ -254,6 +295,8 @@ void ReadVirtualPins()
 	{
 		EndAnalogReadForMux();
 	}
+
+	UpdateRotaryEncoders();
 }
 
 //-- Read all pins

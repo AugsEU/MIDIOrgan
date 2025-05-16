@@ -10,6 +10,7 @@
 #include <MidiOutput.h>
 #include <ScreenDisplay.h>
 #include <UserControls.h>
+#include <AugSynth.h>
 
 #define VPIN_TEST 0
 #define DPIN_TEST 0
@@ -37,6 +38,7 @@ size_t gLoopCount = 0;
 void setup() 
 {
 	LcdInit();
+	InitAugSynth();
 
 	// Init pins
 	SetupPins();
@@ -71,8 +73,13 @@ void loop()
 	ReadAllPins();
 	ReadArpMode();
 	UpdateTempo();
+	PollRotaryEncoders();
 	UpdateMidiOutput();
+	PollRotaryEncoders();
 	UpdateScreen();
+	PollRotaryEncoders();
+	UpdateAugSynth();
+	PollRotaryEncoders();
 
 	if (ArpEnabled())
 	{
@@ -82,6 +89,8 @@ void loop()
 	{
 		PlayNotesDirect(0, NUM_NOTES);
 	}
+
+	PollRotaryEncoders();
 
 #if VPIN_TEST
 	for (uint8_t i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)

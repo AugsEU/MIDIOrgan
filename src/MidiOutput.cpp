@@ -62,7 +62,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 
 void SendMessageToBp();
 void SendMessageToBp(const uint8_t paramNum, const float value);
-void SetAugSynthParam(const AugSynthValueCategory category, const uint8_t index, const float value);
+void SetAugSynthParam(const AugSynthPage category, const uint8_t index, const float value);
 
 void ResetPedalForModeChange();
 
