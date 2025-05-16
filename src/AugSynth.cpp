@@ -2,10 +2,17 @@
 #include <AugSynthParams.h>
 #include <LedControl.h>
 #include <UserControls.h>
+#include <MidiOutput.h>
 
 /// ===================================================================================
 /// Globals
 /// ===================================================================================
+
+const int SAMPLE_RATE = 32000;
+const float DRIVE_K = 1.0f;
+const float DRIVE_ALPHA = 4.0f * DRIVE_K + 1.0f;
+const float ENV_MAX_LENGTH = 30.0f;
+const float ENV_MIN_LENGTH = 0.01f;
 
 constexpr uint8_t NUM_SYNTH_DIALS = 6;
 constexpr uint8_t NUM_LED_PANELS = 3;
@@ -28,6 +35,7 @@ AugSynthDial gSynthDials[NUM_SYNTH_DIALS];
 uint8_t gCurrParamPage;
 
 LedControl gLedPanels = LedControl(2,4,3,NUM_LED_PANELS);
+uint8_t gForceIdx = 0;
 
 /// ===================================================================================
 /// AugSynthParam
@@ -70,7 +78,128 @@ void AugSynthParam::WriteToScreenBuff(char* buff)
 
 float AugSynthParam::GetFloatValue()
 {
-    return 0.0f;
+    if(mMinValue < 0 && mValue < 0)
+    {
+        return (float)mValue / (float)mMinValue;
+    }
+
+    return (float)mValue / (float)mMaxValue;
+}
+
+void AugSynthParam::SendValueToBpSynth()
+{       
+    uint8_t uv = (uint8_t)mValue;
+    switch (mParamNum)
+    {
+    case ASP_DELAY_MODE: // Int params
+	case ASP_TUNING:
+    case ASP_DCO_WAVE_SHAPE_1:
+    case ASP_DCO_WAVE_SHAPE_2:
+    case ASP_VCF_MODE:
+    case ASP_LFO_WAVE_SHAPE:
+        SendParameterToBp(mParamNum, uv);
+		return;
+    default:
+        break;
+    }
+
+    float fv = GetFloatValue();
+
+    // Special exception: Release at -1 sets it to whatever decay is.
+    if(mValue == -1)
+    {
+        switch (mParamNum)
+        {
+        case ASP_ENV_RELEASE1:
+            fv = gAugSynthParams[ASP_ENV_DECAY1].GetFloatValue();   
+            break;
+        case ASP_ENV_RELEASE2:
+            fv = gAugSynthParams[ASP_ENV_DECAY2].GetFloatValue();   
+            break;
+        }
+    }
+
+    switch (mParamNum)
+    {
+    // General
+	case ASP_DRIVE:
+        fv = 1.0f + fv * (DRIVE_ALPHA-1.0f);
+		break;
+	case ASP_GAIN: // 0 to 2/7
+        fv *= 2.0f / 7.0f;
+		break;
+	case ASP_DELAY_TIME: // 0 to 1 
+    case ASP_DELAY_FEEDBACK:
+    case ASP_DELAY_SHEAR:
+    case ASP_DELAY_MODE:
+		break;
+
+    // DCO
+	case ASP_DCO_TUNE_1:
+	case ASP_DCO_TUNE_2:
+        fv = 0.25f * (fv * (fv * fv));
+        fv = powf(2, fv);
+		break;
+	case ASP_DCO_VOL_1:
+	case ASP_DCO_VOL_2:
+        fv *= fv;
+		break;
+	case ASP_DCO_PW_1: // 0.5f to 0.95f
+	case ASP_DCO_PW_2:
+        fv *= (0.95f - 0.5f);
+        fv += 0.5f;
+		break;
+	case ASP_DCO_PWM_1: // -0.5f to 0.5f
+	case ASP_DCO_PWM_2:
+        fv *= 0.5f;
+		break;
+
+    // ENV
+	case ASP_ENV_ATTACK1: // 1.0f / (SAMPLE_RATE * (8.01f - 8.0f * n));
+    case ASP_ENV_DECAY1:
+    case ASP_ENV_RELEASE1:
+	case ASP_ENV_ATTACK2:
+    case ASP_ENV_DECAY2:
+    case ASP_ENV_RELEASE2:
+        fv *= fv;// Give weight to small values.
+        fv = 1.0f / ((float)SAMPLE_RATE * (ENV_MAX_LENGTH + ENV_MIN_LENGTH - ENV_MAX_LENGTH * fv));
+		break;
+	case ASP_ENV_SUSTAIN1: // 0 to 1 
+    case ASP_ENV_SUSTAIN2:
+		break;
+
+    // VCF
+	case ASP_VCF_CUTOFF: // x*x*x
+        fv = fv * fv * fv;
+		break;
+	case ASP_VCF_RES: // 0 to 1
+    case ASP_VCF_FOLLOW:
+		break;
+	case ASP_VCF_CUTOFF_LFO: // -0.5 to 0.5 
+    case ASP_VCF_RES_LFO:
+        fv *= 0.5f;
+		break;
+
+    // LFO
+	case ASP_LFO_RATE: // (x*x*35+0.1)*SAMPLE_PERIOD 
+        fv *= fv;
+        fv *= 35.0f;
+        fv += 0.1f;
+        fv *= (1.0f / (float)SAMPLE_RATE);
+		break;
+	case ASP_LFO_ATTACK:
+        fv = 1.0f / ((float)SAMPLE_RATE * (ENV_MAX_LENGTH + ENV_MIN_LENGTH - ENV_MAX_LENGTH * fv));
+		break;
+	case ASP_LFO_WOBBLE: // -0.5f to 0.5f
+    case ASP_LFO_OSC1_TUNE:
+    case ASP_LFO_OSC1_VOLUME:
+    case ASP_LFO_OSC2_TUNE:
+    case ASP_LFO_OSC2_VOLUME:
+        fv *= 0.5f;
+		break;
+    }
+
+    SendParameterToBp(mParamNum, fv);
 }
 
 /// ===================================================================================
@@ -85,7 +214,7 @@ AugSynthDial::AugSynthDial()
     }
 }
 
-void AugSynthDial::UpdateValue(int8_t delta, bool pressed, char* buff)
+void AugSynthDial::UpdateValue(int8_t delta, bool pressed, char* buff, bool forceSend)
 {
     AugSynthParam* pParam = pressed ? mShiftParamters[gCurrParamPage] : mParamters[gCurrParamPage];
 
@@ -93,6 +222,10 @@ void AugSynthDial::UpdateValue(int8_t delta, bool pressed, char* buff)
     {
         pParam->ApplyDelta(delta);
         pParam->WriteToScreenBuff(buff);
+        if(delta != 0 || forceSend)
+        {
+            pParam->SendValueToBpSynth(); // Send when value changes.
+        }
     }
 }
 
@@ -101,6 +234,7 @@ void AugSynthDial::UpdateValue(int8_t delta, bool pressed, char* buff)
 /// ===================================================================================
 void InitAugSynth()
 {
+    delay(300); // Wait for bp to be online
     InitSynthPatch();
     BindDialsToParams();
     gCurrParamPage = AugSynthPage::ASP_GENERAL;
@@ -164,17 +298,17 @@ void BindDialsToParams()
                                 &gAugSynthParams[ASP_ENV_RELEASE1],         &gAugSynthParams[ASP_ENV_RELEASE2]);
 
     // VCF
-    BIND_ROW(0, ASP_VCF,        &gAugSynthParams[ASP_VCF_MODE],             &gAugSynthParams[ASP_LFO_GAIN], 
+    BIND_ROW(0, ASP_VCF,        &gAugSynthParams[ASP_VCF_MODE],             &gAugSynthParams[ASP_VCF_FOLLOW], 
                                 nullptr,                                    nullptr);
 
     BIND_ROW(1, ASP_VCF,        &gAugSynthParams[ASP_VCF_CUTOFF],           &gAugSynthParams[ASP_VCF_CUTOFF_LFO],
-                                nullptr,                                    &gAugSynthParams[ASP_LFO_OSC1_VOLUME]);
+                                nullptr,                                    nullptr);
 
     BIND_ROW(2, ASP_VCF,        &gAugSynthParams[ASP_VCF_RES],              &gAugSynthParams[ASP_VCF_RES_LFO],
-                                nullptr,                                    &gAugSynthParams[ASP_LFO_OSC1_VOLUME]);
+                                nullptr,                                    nullptr);
 
     // LFO
-    BIND_ROW(0, ASP_LFO,        &gAugSynthParams[ASP_LFO_WAVE_SHAPE],       &gAugSynthParams[ASP_LFO_GAIN], 
+    BIND_ROW(0, ASP_LFO,        &gAugSynthParams[ASP_LFO_WAVE_SHAPE],       &gAugSynthParams[ASP_LFO_WOBBLE], 
                                 nullptr,                                    nullptr);
 
     BIND_ROW(1, ASP_LFO,        &gAugSynthParams[ASP_LFO_RATE],             &gAugSynthParams[ASP_LFO_OSC1_TUNE],
@@ -229,23 +363,49 @@ void InitSynthPatch()
     gAugSynthParams[ASP_LFO_RATE           ] = AugSynthParam(ASP_LFO_RATE           , 25, 0,   99);
     gAugSynthParams[ASP_LFO_WAVE_SHAPE     ] = AugSynthParam(ASP_LFO_WAVE_SHAPE     , 0,  0,   NUM_LFO_OSC_MODES-1);
     gAugSynthParams[ASP_LFO_ATTACK         ] = AugSynthParam(ASP_LFO_ATTACK         , 0,  0,   99);
-    gAugSynthParams[ASP_LFO_GAIN           ] = AugSynthParam(ASP_LFO_GAIN           , 0,  -20, 20);
+    gAugSynthParams[ASP_LFO_WOBBLE         ] = AugSynthParam(ASP_LFO_WOBBLE         , 0,  -20, 20);
     gAugSynthParams[ASP_LFO_OSC1_TUNE      ] = AugSynthParam(ASP_LFO_OSC1_TUNE      , 0,  -20, 20);
     gAugSynthParams[ASP_LFO_OSC1_VOLUME    ] = AugSynthParam(ASP_LFO_OSC1_VOLUME    , 0,  -20, 20);
     gAugSynthParams[ASP_LFO_OSC2_TUNE      ] = AugSynthParam(ASP_LFO_OSC2_TUNE      , 0,  -20, 20);
     gAugSynthParams[ASP_LFO_OSC1_VOLUME    ] = AugSynthParam(ASP_LFO_OSC1_VOLUME    , 0,  -20, 20);
+
+    SendAllParams();
 } 
+
+void SendAllParams()
+{
+    for(uint8_t i = 0; i < ASP_NUM_PARAMS; i++)
+    {
+        gAugSynthParams->SendValueToBpSynth();
+    }
+}
+
+void RefreshPage()
+{
+    for (uint8_t i = 0; i < NUM_LED_PANELS; i++)
+    {
+        gLedPanels.clearDisplay(i);
+        gLedPanels.shutdown(i, false);
+        delayMicroseconds(10);
+    }
+
+    for(uint8_t i = 0; i < NUM_LED_CHARS; i++)
+    {
+        gWrittenLedChars[i] = ' ';
+    }
+}
 
 void UpdateAugSynth()
 {
     // Poll encoders
-    bool pressed = gVirtualMuxPins[VPIN_PAGE_SELECT_SW].IsActive(); // ~TODO Default preset?
+    bool pressed = gVirtualMuxPins[VPIN_PAGE_SELECT_SW].IsActive(); // @TODO Default preset?
     int8_t pageDelta = gRotaryEncoders[PAGE_SELECT_DIAL_IDX].ConsumeDelta();
     if(pageDelta < 0)
     {
         if(gCurrParamPage > 0)
         {
             gCurrParamPage--;
+            RefreshPage();
         }
     }
     else if(pageDelta > 0)
@@ -253,6 +413,7 @@ void UpdateAugSynth()
         if(gCurrParamPage < AugSynthPage::NUM_SYNTH_PAGES-1)
         {
             gCurrParamPage++;
+            RefreshPage();
         }
     }
 
@@ -260,13 +421,7 @@ void UpdateAugSynth()
     {
         pressed = gVirtualMuxPins[VPIN_DIALS_SW[i]].IsActive();
         int8_t delta = gRotaryEncoders[VPIN_DIALS_IDX[i]].ConsumeDelta();
-        // if(delta != 0)
-        // {   
-        //     char msgBuff[64];
-        //     sprintf(msgBuff, "A %d: %d", (int)i, (int)delta);
-		// 	Serial.println(msgBuff);
-        // }
-        gSynthDials[i].UpdateValue(delta, pressed, (gDesiredLedChars + i * 4));
+        gSynthDials[i].UpdateValue(delta, pressed, (gDesiredLedChars + i * 4), gForceIdx == 2*i);
     }
 
     uint8_t idx = 0;
@@ -282,5 +437,11 @@ void UpdateAugSynth()
             }
             idx++;
         }
+    }
+
+    gForceIdx++;
+    if(gForceIdx > NUM_SYNTH_DIALS * 2) // times 2 so we don't force send every frame.
+    {
+        gForceIdx = 0;
     }
 }

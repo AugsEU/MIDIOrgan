@@ -102,6 +102,7 @@ struct AnalogSelector
 void SetupPins();
 void ReadAllPins();
 void PollRotaryEncoders();
+void ClearRotaryEncoderDeltas();
 uint32_t GetPedalStable();
 
 // Debug

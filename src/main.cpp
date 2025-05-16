@@ -51,9 +51,10 @@ void setup()
 	
 	MidiOutputSetup();
 
-	delay(100); // Delay to make sure BP synth is online.
+	delay(100); // Delay to make everything is online.
 	
 	gTime = millis();
+	ClearRotaryEncoderDeltas();
 }
 
 

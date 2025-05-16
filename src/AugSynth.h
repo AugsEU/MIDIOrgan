@@ -19,6 +19,8 @@ struct AugSynthParam
     void WriteToScreenBuff(char* buff);
 
     float GetFloatValue();
+
+    void SendValueToBpSynth();
 };
 
 struct AugSynthDial
@@ -28,12 +30,13 @@ struct AugSynthDial
 
     AugSynthDial();
 
-    void UpdateValue(int8_t delta, bool pressed, char* buff);
+    void UpdateValue(int8_t delta, bool pressed, char* buff, bool forceSend);
 };
 
 void InitAugSynth();
 void InitSynthPatch();
 void BindDialsToParams();
+void SendAllParams();
 
 void UpdateAugSynth();
 

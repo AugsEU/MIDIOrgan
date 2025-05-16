@@ -240,6 +240,15 @@ void PollRotaryEncoders()
 	UpdateRotaryEncoders();
 }
 
+void ClearRotaryEncoderDeltas()
+{
+	for(uint8_t i = 0; i < NUM_ROTARY_ENCODERS; i++)
+	{
+		gRotaryEncoders[i].mValue = 0;
+		gRotaryEncoders[i].mLatch = 0;
+	}
+}
+
 void ReadVirtualPins()
 {
 	uint8_t idx = 0;

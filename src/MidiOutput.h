@@ -100,5 +100,8 @@ bool SendPedalPitchBend(int value);
 bool ChannelIsPedal(uint8_t ch);
 void UpdatePedal();
 
+void SendParameterToBp(const uint8_t paramNum, const float value);
+void SendParameterToBp(const uint8_t paramNum, const uint8_t value);
+
 
 #endif // MIDI_OUTPUT_H

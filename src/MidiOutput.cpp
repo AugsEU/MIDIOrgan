@@ -17,6 +17,7 @@ constexpr uint8_t DEFAULT_PLAY_VELOCITY = 100;
 
 constexpr uint8_t BP_CMD_NOTE_ON = 0xC0;
 constexpr uint8_t BP_CMD_NOTE_OFF = 0x80;
+constexpr uint8_t BP_CMD_SET_INT_PARAM = 0xA0;
 
 constexpr uint8_t MIDI_CC_MOD_WHEEL = 1;
 constexpr uint8_t MIDI_CC_EXPRESSION = 11;
@@ -61,7 +62,7 @@ uint8_t gParamToSend = 0;
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 void SendMessageToBp();
-void SendMessageToBp(const uint8_t paramNum, const float value);
+void SendParameterToBp(const uint8_t paramNum, const float value);
 void SetAugSynthParam(const AugSynthPage category, const uint8_t index, const float value);
 
 void ResetPedalForModeChange();
@@ -596,17 +597,26 @@ void SendMessageToBp()
         Serial1.write(gBpMsgBuff[i]);
     }
 
+    PollRotaryEncoders();
     delayMicroseconds(50); // let bp interupt finish
 }
 
 
 /// @brief Send a message to the BP synth
-void SendMessageToBp(const uint8_t paramNum, const float value)
+void SendParameterToBp(const uint8_t paramNum, const float value)
 {
     gBpMsgBuff[0] = paramNum & 0x7F;
 
     float* floatPtr = reinterpret_cast<float*>(gBpMsgBuff + 1);
     *floatPtr = value;
+
+    SendMessageToBp();
+}
+
+void SendParameterToBp(const uint8_t paramNum, const uint8_t value)
+{
+    gBpMsgBuff[0] = BP_CMD_SET_INT_PARAM;
+    gBpMsgBuff[1] = value;
 
     SendMessageToBp();
 }
