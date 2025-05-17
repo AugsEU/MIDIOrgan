@@ -64,30 +64,22 @@ struct AnalogSelector
         uint16_t prevRegion = (uint16_t)(mValue - minValue);
         if (region == prevRegion + 1) // Going to region 1 above
         {
-            if(analog * divisions <= prevRegion * ANALOG_MAX_VALUE + deadzoneSize * divisions)
+            analog -= deadzoneSize;
+            region = (analog * divisions) / ANALOG_MAX_VALUE;
+            if(region <= prevRegion)
             {
                 return mValue;
             }
         }
         else if(region + 1 == prevRegion) // Going to region 1 below
         {
-            if((analog + deadzoneSize) * divisions >= prevRegion * ANALOG_MAX_VALUE)
+            analog += deadzoneSize;
+            region = (analog * divisions) / ANALOG_MAX_VALUE;
+            if(region >= prevRegion)
             {
                 return mValue;
             }
         }
-    
-        // if ((analog + deadzoneSize) * divisions > (mValue + 1) * ANALOG_MAX_VALUE)
-        // {
-        //     // In upper deadzone do not update
-        //     return mValue;
-        // }
-    
-        // if ((analog < deadzoneSize) || (analog - deadzoneSize) * divisions < mValue * ANALOG_MAX_VALUE)
-        // {
-        //     // In lower deadzone do not update
-        //     return mValue;
-        // }
     
         return (T)region + minValue;
     }
