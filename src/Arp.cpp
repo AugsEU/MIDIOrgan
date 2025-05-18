@@ -177,7 +177,7 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 	uTimeMs gateTime = gTempoInterval / gArpSpeed; 
 
 	gateTime -= 1;
-	gateTime *= gArpGate.mStableValue;
+	gateTime *= gArpGate.GetStableValue();
 	gateTime >>= ANALOG_READ_RESOLUTION_BITS;
 	bool noteOff = gTime > mLastNoteTime + gateTime;
 

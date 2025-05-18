@@ -12,7 +12,7 @@
 #include <UserControls.h>
 #include <AugSynth.h>
 
-#define VPIN_TEST 0
+#define VPIN_TEST 1
 #define DPIN_TEST 0
 #define APIN_TEST 0
 #define PROFILING_ENABLED 0

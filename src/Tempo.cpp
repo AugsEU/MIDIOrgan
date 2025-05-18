@@ -18,7 +18,7 @@ static_assert(ANALOG_MAX_VALUE == 1024, "Need to change function below when chan
 /// @brief Calculates tempo from analog values.
 void RecalculateTempo()
 {
-    uint32_t x = gTempoReading.mStableValue;
+    uint32_t x = gTempoReading.GetStableValue();
 
     if (x <= 512)
     {

@@ -11,7 +11,7 @@
 const int SAMPLE_RATE = 32000;
 const float DRIVE_K = 1.0f;
 const float DRIVE_ALPHA = 4.0f * DRIVE_K + 1.0f;
-const float ENV_MAX_LENGTH = 30.0f;
+const float ENV_MAX_LENGTH = 20.0f;
 const float ENV_MIN_LENGTH = 0.01f;
 
 constexpr uint8_t NUM_SYNTH_DIALS = 6;
@@ -80,7 +80,7 @@ float AugSynthParam::GetFloatValue()
 {
     if(mMinValue < 0 && mValue < 0)
     {
-        return (float)mValue / (float)mMinValue;
+        return -(float)mValue / (float)mMinValue;
     }
 
     return (float)mValue / (float)mMaxValue;
@@ -125,8 +125,9 @@ void AugSynthParam::SendValueToBpSynth()
 	case ASP_DRIVE:
         fv = 1.0f + fv * (DRIVE_ALPHA-1.0f);
 		break;
-	case ASP_GAIN: // 0 to 2/7
-        fv *= 2.0f / 7.0f;
+	case ASP_GAIN: // 0 to 1/7
+        fv *= fv;
+        fv *= 1.0f / 7.0f;
 		break;
 	case ASP_DELAY_TIME: // 0 to 1 
     case ASP_DELAY_FEEDBACK:
@@ -137,7 +138,7 @@ void AugSynthParam::SendValueToBpSynth()
     // DCO
 	case ASP_DCO_TUNE_1:
 	case ASP_DCO_TUNE_2:
-        fv = 0.25f * (fv * (fv * fv));
+        fv = fv * fv * fv;
         fv = powf(2, fv);
 		break;
 	case ASP_DCO_VOL_1:
@@ -162,6 +163,7 @@ void AugSynthParam::SendValueToBpSynth()
     case ASP_ENV_DECAY2:
     case ASP_ENV_RELEASE2:
         fv *= fv;// Give weight to small values.
+        fv = 1.0f - fv;
         fv = 1.0f / ((float)SAMPLE_RATE * (ENV_MAX_LENGTH + ENV_MIN_LENGTH - ENV_MAX_LENGTH * fv));
 		break;
 	case ASP_ENV_SUSTAIN1: // 0 to 1 
@@ -188,15 +190,19 @@ void AugSynthParam::SendValueToBpSynth()
         fv *= (1.0f / (float)SAMPLE_RATE);
 		break;
 	case ASP_LFO_ATTACK:
+        fv = 1.0f - fv;
         fv = 1.0f / ((float)SAMPLE_RATE * (ENV_MAX_LENGTH + ENV_MIN_LENGTH - ENV_MAX_LENGTH * fv));
 		break;
 	case ASP_LFO_WOBBLE: // -0.5f to 0.5f
-    case ASP_LFO_OSC1_TUNE:
     case ASP_LFO_OSC1_VOLUME:
-    case ASP_LFO_OSC2_TUNE:
     case ASP_LFO_OSC2_VOLUME:
         fv *= 0.5f;
 		break;
+    case ASP_LFO_OSC1_TUNE: // -0.5 to 0.5 weighted to small values
+    case ASP_LFO_OSC2_TUNE:
+        fv *= fabsf(fv);
+        fv *= 0.5f;
+        break;
     }
 
     SendParameterToBp(mParamNum, fv);
@@ -214,7 +220,7 @@ AugSynthDial::AugSynthDial()
     }
 }
 
-void AugSynthDial::UpdateValue(int8_t delta, bool pressed, char* buff, bool forceSend)
+void AugSynthDial::UpdateValue(int8_t delta, bool pressed, char* buff)
 {
     AugSynthParam* pParam = pressed ? mShiftParamters[gCurrParamPage] : mParamters[gCurrParamPage];
 
@@ -222,7 +228,7 @@ void AugSynthDial::UpdateValue(int8_t delta, bool pressed, char* buff, bool forc
     {
         pParam->ApplyDelta(delta);
         pParam->WriteToScreenBuff(buff);
-        if(delta != 0 || forceSend)
+        if(delta != 0)
         {
             pParam->SendValueToBpSynth(); // Send when value changes.
         }
@@ -235,6 +241,7 @@ void AugSynthDial::UpdateValue(int8_t delta, bool pressed, char* buff, bool forc
 void InitAugSynth()
 {
     delay(300); // Wait for bp to be online
+
     InitSynthPatch();
     BindDialsToParams();
     gCurrParamPage = AugSynthPage::ASP_GENERAL;
@@ -342,13 +349,13 @@ void InitSynthPatch()
     gAugSynthParams[ASP_DCO_PWM_2          ] = AugSynthParam(ASP_DCO_PWM_2          , 0,  -20, 20);
 
     // ENV
-    gAugSynthParams[ASP_ENV_ATTACK1        ] = AugSynthParam(ASP_ENV_ATTACK1        , 0,  5,   99);
-    gAugSynthParams[ASP_ENV_DECAY1         ] = AugSynthParam(ASP_ENV_DECAY1         , 0,  10,  99);
-    gAugSynthParams[ASP_ENV_SUSTAIN1       ] = AugSynthParam(ASP_ENV_SUSTAIN1       , 0,  40,  50);
+    gAugSynthParams[ASP_ENV_ATTACK1        ] = AugSynthParam(ASP_ENV_ATTACK1        , 5,  0,   99);
+    gAugSynthParams[ASP_ENV_DECAY1         ] = AugSynthParam(ASP_ENV_DECAY1         , 10, 0,   99);
+    gAugSynthParams[ASP_ENV_SUSTAIN1       ] = AugSynthParam(ASP_ENV_SUSTAIN1       , 40, 0,   50);
     gAugSynthParams[ASP_ENV_RELEASE1       ] = AugSynthParam(ASP_ENV_RELEASE1       , -1, -1,  99); // Note: -1 is decay
-    gAugSynthParams[ASP_ENV_ATTACK2        ] = AugSynthParam(ASP_ENV_ATTACK2        , 0,  5,   99);
-    gAugSynthParams[ASP_ENV_SUSTAIN2       ] = AugSynthParam(ASP_ENV_SUSTAIN2       , 0,  10,  99);
-    gAugSynthParams[ASP_ENV_DECAY2         ] = AugSynthParam(ASP_ENV_DECAY2         , 0,  40,  50);
+    gAugSynthParams[ASP_ENV_ATTACK2        ] = AugSynthParam(ASP_ENV_ATTACK2        , 5,  0,   99);
+    gAugSynthParams[ASP_ENV_DECAY2         ] = AugSynthParam(ASP_ENV_DECAY2         , 10, 0,   99);
+    gAugSynthParams[ASP_ENV_SUSTAIN2       ] = AugSynthParam(ASP_ENV_SUSTAIN2       , 40, 0,   50);
     gAugSynthParams[ASP_ENV_RELEASE2       ] = AugSynthParam(ASP_ENV_RELEASE2       , -1, -1,  99); // Note -1 is decay
    
     // VCF   
@@ -402,17 +409,17 @@ void UpdateAugSynth()
     int8_t pageDelta = gRotaryEncoders[PAGE_SELECT_DIAL_IDX].ConsumeDelta();
     if(pageDelta < 0)
     {
-        if(gCurrParamPage > 0)
+        if(gCurrParamPage < AugSynthPage::NUM_SYNTH_PAGES-1)
         {
-            gCurrParamPage--;
+            gCurrParamPage++;
             RefreshPage();
         }
     }
     else if(pageDelta > 0)
     {
-        if(gCurrParamPage < AugSynthPage::NUM_SYNTH_PAGES-1)
+        if(gCurrParamPage > 0)
         {
-            gCurrParamPage++;
+            gCurrParamPage--;
             RefreshPage();
         }
     }
@@ -421,7 +428,7 @@ void UpdateAugSynth()
     {
         pressed = gVirtualMuxPins[VPIN_DIALS_SW[i]].IsActive();
         int8_t delta = gRotaryEncoders[VPIN_DIALS_IDX[i]].ConsumeDelta();
-        gSynthDials[i].UpdateValue(delta, pressed, (gDesiredLedChars + i * 4), gForceIdx == 2*i);
+        gSynthDials[i].UpdateValue(delta, pressed, (gDesiredLedChars + i * 4));
     }
 
     uint8_t idx = 0;
@@ -433,14 +440,14 @@ void UpdateAugSynth()
             if(gWrittenLedChars[idx] != desired)
             {
                 gWrittenLedChars[idx] = desired;
-                gLedPanels.setChar(i, c, desired, false);
+                gLedPanels.setChar(i, desired, desired, false);
             }
             idx++;
         }
     }
 
-    gForceIdx++;
-    if(gForceIdx > NUM_SYNTH_DIALS * 2) // times 2 so we don't force send every frame.
+    gAugSynthParams[gForceIdx++].SendValueToBpSynth();
+    if(gForceIdx >= ASP_NUM_PARAMS)
     {
         gForceIdx = 0;
     }

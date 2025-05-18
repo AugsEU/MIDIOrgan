@@ -16,23 +16,30 @@ void RotaryEncoder::UpdateDial(bool left, bool right)
         if(left && !right) mLatch = -1;
         else if(right) mLatch = 1;
     }
+    if(mLatch != 0)
+    {
+        if(left && right) // Confirm when 2 waves collide
+        {
+            if(mLatch < 0)
+            {
+                if(mValue > -127)
+                {
+                    mValue--;
+                }
+            }
+            else if(mLatch > 0)
+            {
+                if(mValue < 127)
+                {
+                    mValue++;
+                }
+            }
+            mLatch = 0;
+        }
+    }
 
     if(!left && !right)
     {
-        if(mLatch < 0)
-        {
-            if(mValue > -127)
-            {
-                mValue--;
-            }
-        }
-        else if(mLatch > 0)
-        {
-            if(mValue < 127)
-            {
-                mValue++;
-            }
-        }
         mLatch = 0;
     }
 

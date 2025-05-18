@@ -41,7 +41,7 @@ uint32_t gPedalValueCache = 0;
 
 StableState<16> gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 RotaryEncoder gRotaryEncoders[NUM_ROTARY_ENCODERS];
-StableState<3> gRotaryEncoderMuxPins[8*2];
+StableState<4> gRotaryEncoderMuxPins[8*2];
 
 uint8_t gAnalogReadSection = 0;
 uint8_t gAnalogReadingPin = 0xFF;
@@ -185,7 +185,7 @@ void EndAnalogReadForMux()
 	case 8:
 		gStablePedal.ConsumeInput(EndAnalogRead());
 		{
-			gPedalValueCache = gStablePedal.mStableValue; // need 32 to avoid overflow
+			gPedalValueCache = gStablePedal.GetStableValue(); // need 32 to avoid overflow
 			gPedalValueCache = min(gPedalValueCache, PEDAL_MAX);
 			gPedalValueCache = max(gPedalValueCache, PEDAL_MIN); // clamp
 
@@ -228,7 +228,7 @@ void PollRotaryEncoders()
 			for (uint8_t s0 = 0; s0 <= 1; s0++)
 			{
 				digitalWrite(PIN_MUX_S0, s0 ? LOW : HIGH);
-				delayMicroseconds(7);
+				delayMicroseconds(10);
 
 				idx = 4*s2 + 2*s1 + s0;
 				gRotaryEncoderMuxPins[idx].UpdateState(PORT_DPIN_34 == 0);
@@ -270,7 +270,7 @@ void ReadVirtualPins()
 				delayMicroseconds(20);
 
 				idx = 4*s2 + 2*s1 + s0;
-#if DIRECT_PORT_READ
+#if DIRECT_PORT_READ && 0
 				gVirtualMuxPins[idx+8*0] .UpdateState(PORT_DPIN_22 == 0);
 				gVirtualMuxPins[idx+8*1] .UpdateState(PORT_DPIN_23 == 0);
 				gVirtualMuxPins[idx+8*2] .UpdateState(PORT_DPIN_24 == 0);
@@ -291,6 +291,9 @@ void ReadVirtualPins()
 				{
 					gVirtualMuxPins[idx+8*i].UpdateState(digitalRead(PIN_MUX_START + i) == LOW);
 				}
+
+				gRotaryEncoderMuxPins[idx].UpdateState(digitalRead(PIN_MUX_RE_LEFT) == LOW);
+				gRotaryEncoderMuxPins[idx+8].UpdateState(digitalRead(PIN_MUX_RE_RIGHT) == LOW);
 #endif
 				if(AnalogReadEndReady())
 				{
@@ -343,6 +346,9 @@ void ReadAllPins()
 	gdpLoop3.UpdateState(digitalRead(PIN_LOOP3));
 	gdpLoop4.UpdateState(digitalRead(PIN_LOOP4));
 #endif
+
+	gapMidiChUpper = analogRead(PINA_MIDI_CH_UPPER);
+	gapMidiChLower = analogRead(PINA_MIDI_CH_LOWER);
 }
 
 uint32_t GetPedalStable()

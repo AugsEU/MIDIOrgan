@@ -30,7 +30,7 @@ struct AugSynthDial
 
     AugSynthDial();
 
-    void UpdateValue(int8_t delta, bool pressed, char* buff, bool forceSend);
+    void UpdateValue(int8_t delta, bool pressed, char* buff);
 };
 
 void InitAugSynth();

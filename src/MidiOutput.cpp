@@ -615,8 +615,9 @@ void SendParameterToBp(const uint8_t paramNum, const float value)
 
 void SendParameterToBp(const uint8_t paramNum, const uint8_t value)
 {
-    gBpMsgBuff[0] = BP_CMD_SET_INT_PARAM;
-    gBpMsgBuff[1] = value;
+    gBpMsgBuff[0] = paramNum & 0x7F;
+    uint32_t* uint32Ptr = reinterpret_cast<uint32_t*>(gBpMsgBuff + 1);
+    *uint32Ptr = (uint32_t)value;
 
     SendMessageToBp();
 }
