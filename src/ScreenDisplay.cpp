@@ -5,16 +5,44 @@
 #include <Tempo.h>
 #include <MidiOutput.h>
 
+struct CharmapInfo
+{
+    uint8_t mLoadedSlot = 0xFF;
+};
+
 /// ===================================================================================
 /// Constants
 /// ===================================================================================
 #define SCREEN_FLASH_TEST 0
+#define CREATE_CHAR_MAP(_id_, _name_, ...) \
+    static_assert(_id_<NUM_CHAR_MAPS); \
+    constexpr uint8_t CID_##_name_ = _id_; \
+    const char CM_##_name_[8] PROGMEM = { __VA_ARGS__ };
 
-const char CM_QUARTER_NOTE[8] PROGMEM = { 0x2, 0x2, 0x2, 0x2, 0x6, 0xE, 0xC, 0x0 };
-const char CM_CHANNEL[8] PROGMEM = { 0x1C, 0x10, 0x1C, 0x0, 0x5, 0x7, 0x5, 0x0 };
-const char CM_OCTAVE[8] PROGMEM = { 0x1C, 0x14, 0x1C, 0x0, 0x7, 0x4, 0x7, 0x0 };
-//const char CM_PEDAL[8] PROGMEM = { 0x1C, 0x14, 0x19, 0x12, 0x4, 0xA, 0x12, 0x1F }; // with P
-const char CM_PEDAL[8] PROGMEM = { 0x0, 0x0, 0x1, 0x2, 0x4, 0xA, 0x12, 0x1F }; // without P
+#define DEFINE_CHAR_ARRAY_ELEM(_id_, _name_, ...) \
+    CM_##_name_,
+
+#define CHAR_MAPS_TABLE(TABLE_ENTRY_FUNC) \
+    TABLE_ENTRY_FUNC(0, QUARTER_NOTE, 0x2, 0x2, 0x2, 0x2, 0x6, 0xE, 0xC, 0x0)    \
+    TABLE_ENTRY_FUNC(1, CHANNEL, 0x1C, 0x10, 0x1C, 0x0, 0x5, 0x7, 0x5, 0x0)      \
+    TABLE_ENTRY_FUNC(2, OCTAVE, 0x1C, 0x14, 0x1C, 0x0, 0x7, 0x4, 0x7, 0x0)       \
+    TABLE_ENTRY_FUNC(3, PEDAL, 0x0, 0x0, 0x1, 0x2, 0x4, 0xA, 0x12, 0x1F)         \
+    TABLE_ENTRY_FUNC(4, ASP_GENERAL_U, 0xE, 0xA, 0xE, 0xA, 0x0, 0x8, 0x8, 0xE)   \
+    TABLE_ENTRY_FUNC(5, ASP_GENERAL_L, 0x8, 0x8, 0xE, 0x0, 0x0, 0xE, 0xE, 0x0)   \
+    TABLE_ENTRY_FUNC(6, ASP_DELAY_U, 0xC, 0xA, 0xA, 0xC, 0x0, 0x8, 0x8, 0xE)     \
+    TABLE_ENTRY_FUNC(7, ASP_DELAY_L, 0xE, 0x4, 0x4, 0x0, 0x10, 0x10, 0x14, 0x15) \
+    TABLE_ENTRY_FUNC(8, ASP_OSC_U, 0xE, 0xA, 0xA, 0xE, 0x0, 0x6, 0x4, 0xC)       \
+    TABLE_ENTRY_FUNC(9, ASP_OSC1_L, 0xE, 0x8, 0xE, 0x0, 0x4, 0xC, 0x4, 0x4)      \
+    TABLE_ENTRY_FUNC(10, ASP_OSC2_L, 0xE, 0x8, 0xE, 0x0, 0xC, 0x4, 0x8, 0xC)     \
+    TABLE_ENTRY_FUNC(11, ASP_FILTER_U, 0xE, 0x8, 0xC, 0x8, 0x0, 0x8, 0x8, 0xE)   \
+    TABLE_ENTRY_FUNC(12, ASP_FILTER_L, 0xE, 0x4, 0x4, 0x0, 0x4, 0x1A, 0x1, 0x0)  \
+    TABLE_ENTRY_FUNC(13, ASP_LFO_U, 0x8, 0x8, 0x8, 0xE, 0x0, 0xE, 0xC, 0x8)      \
+    TABLE_ENTRY_FUNC(14, ASP_LFO_L, 0xE, 0xA, 0xE, 0x0, 0x8, 0x15, 0x2, 0x0)     \
+
+constexpr uint8_t MAX_CHAR_STORAGE = 8;
+constexpr size_t NUM_CHAR_MAPS = 15;
+CHAR_MAPS_TABLE(CREATE_CHAR_MAP)
+constexpr const char* CID_TO_CM[] = {CHAR_MAPS_TABLE(DEFINE_CHAR_ARRAY_ELEM)};
 
 constexpr uTimeMs REFRESH_PERIOD = 10; // 10ms for 100FPS.
 constexpr uint8_t SCREEN_WIDTH = 16;
@@ -50,11 +78,20 @@ uint8_t gTestCountDown = 0;
 /// Globals
 /// ===================================================================================
 LiquidCrystal_I2C gLcd(SCREEN_ADR, SCREEN_WIDTH, SCREEN_HEIGHT); 
-char gDesiredChars[NUM_SCREEN_CHARS + 1]; // Screen is 32 chars + zero terminator
-char gCurrentChars[NUM_SCREEN_CHARS + 1]; // Screen is 32 chars + zero terminator
+char gDesiredChars[NUM_SCREEN_CHARS]; // Screen is 32 chars
+char gCurrentChars[NUM_SCREEN_CHARS]; // Screen is 32 chars
+CharmapInfo gCharmapInfos[NUM_CHAR_MAPS];
+uint8_t gLoadedCharmaps[MAX_CHAR_STORAGE];
 
 ScreenPage gCurrScreenPage;
 uTimeMs gPageChangeTime;
+
+/// ===================================================================================
+/// Private functions
+/// ===================================================================================
+void UpdateFreeCharmaps();
+bool PushDesiredChars();
+const char* const PedalModeToCharsShort(PedalMode mode);
 
 /// ===================================================================================
 /// Init
@@ -65,10 +102,10 @@ void LcdInit()
 {
     gLcd.init();
     gLcd.backlight();
-    gLcd.createChar(1, CM_QUARTER_NOTE);
-    gLcd.createChar(2, CM_CHANNEL);
-    gLcd.createChar(3, CM_OCTAVE);
-    gLcd.createChar(4, CM_PEDAL);
+    for(uint8_t i = 0; i < MAX_CHAR_STORAGE; i++)
+    {
+        gLoadedCharmaps[i] = 0xFF;
+    }
 
     const uint8_t NUM_SCREEN_CHARS = SCREEN_WIDTH * SCREEN_HEIGHT;
     for(uint8_t i = 0; i < NUM_SCREEN_CHARS; i++)
@@ -76,15 +113,17 @@ void LcdInit()
         gDesiredChars[i] = ' ';
         gCurrentChars[i] = ' ';
     }
-    gDesiredChars[SCREEN_WIDTH*SCREEN_HEIGHT] = '\0';
-    gCurrentChars[SCREEN_WIDTH*SCREEN_HEIGHT] = '\0';
 
+    UpdateFreeCharmaps();
     // Default general info
     EnterGeneralInfo();
     gPageChangeTime = gTime;
     gCurrScreenPage = ScreenPage::SP_GENERAL_INFO;
 }
 
+/// ===================================================================================
+/// Update
+/// ===================================================================================
 
 /// @brief Change page
 void SetScreenPage(ScreenPage page)
@@ -114,7 +153,6 @@ void ReturnToScreenAfterTime(ScreenPage page, uTimeMs timeMs)
         SetScreenPage(page);
     }
 }
-
 
 /// @brief Update screen. Must be called regularly
 void UpdateScreen()
@@ -152,13 +190,20 @@ void UpdateScreen()
 #endif // !SCREEN_FLASH_TEST
 
     // Push desired chars to the screen.
-    PushDesiredChars();
+    if(PushDesiredChars())
+    {
+
+        // Update free slots
+        UpdateFreeCharmaps();
+    }
+
     
     return;
 }
 
 /// @brief Push chars in desired buffer to screen if different.
-void PushDesiredChars()
+// Return true if anything changed.
+bool PushDesiredChars()
 {
     uint8_t numChanged = 0;
 
@@ -182,13 +227,75 @@ void PushDesiredChars()
 
                 if(numChanged >= MAX_CHANGE_PER_UPDATE)
                 {
-                    return;
+                    return true;
                 }
             }
         }
     }
+
+    return numChanged > 0;
 }
 
+
+/// ===================================================================================
+/// Special chars
+/// ===================================================================================
+void UpdateFreeCharmaps()
+{
+    for(uint8_t i = 0; i < NUM_SCREEN_CHARS; i++)
+    {
+        char desired = gDesiredChars[i];
+        if((uint8_t)desired < MAX_CHAR_STORAGE)// Is a special char
+        {
+            gLoadedCharmaps[desired] |= 0x80;// Mark as needed.
+        }
+
+        char onScreen = gCurrentChars[i];
+        if((uint8_t)onScreen < MAX_CHAR_STORAGE)// Is a special char
+        {
+            gLoadedCharmaps[onScreen] |= 0x80;// Mark as needed.
+        }
+    }
+
+    for(uint8_t i = 0; i < MAX_CHAR_STORAGE; i++)
+    {
+        if((gLoadedCharmaps[i] & 0x80) == 0)
+        {
+            gCharmapInfos[gLoadedCharmaps[i]].mLoadedSlot = 0xFF;
+            gLoadedCharmaps[i] = 0xFF;
+        }
+        else
+        {
+            gLoadedCharmaps[i] &= 0x7F; // Unset flag bit
+        }
+    }
+}
+
+void WriteSpecialChar(uint8_t id, uint8_t x, uint8_t y)
+{
+    uint8_t idx = x + y * SCREEN_WIDTH;
+    if(gCharmapInfos[id].mLoadedSlot == 0xFF)
+    {
+        for(uint8_t i = 0; i < MAX_CHAR_STORAGE; i++) // Search for free slot.
+        {
+            if(gLoadedCharmaps[i] == 0xFF)
+            {
+                gLcd.createChar(i, CID_TO_CM[id]);
+                gLoadedCharmaps[i] = id;
+                gCharmapInfos[id].mLoadedSlot = i;
+                break;
+            }
+        }
+
+        if(gCharmapInfos[id].mLoadedSlot == 0xFF)
+        {
+            Serial.println("ERROR: Could not find free slot for special char.");
+            return;
+        }
+    }
+
+    gDesiredChars[idx] = (char)(gCharmapInfos[id].mLoadedSlot);
+}
 
 /// ===================================================================================
 /// Write to buffer
@@ -294,8 +401,6 @@ void WriteString(uint8_t x, uint8_t y, const char* buffer, uint8_t len)
 /// General info
 /// ===================================================================================
 
-const char* const PedalModeToCharsShort(PedalMode mode);
-
 /// @brief Enter "General info section"
 void EnterGeneralInfo()
 {
@@ -308,8 +413,15 @@ void WriteGeneralInfo()
     // Screen layout
     // General Info
     //  0123456789012345
-    //0  Q  O -2 C 12 P
-    //1 999  -2   12 vmm
+    //0  Q  O -2 C 12 MM
+    //1 999  -2   12 Pvv
+
+    ClearLine(0);
+    ClearLine(1);
+    WriteSpecialChar(CID_QUARTER_NOTE, 1, 0);
+    WriteSpecialChar(CID_OCTAVE, 4, 0);
+    WriteSpecialChar(CID_CHANNEL, 9, 0);
+    WriteSpecialChar(CID_PEDAL, 13, 1);
 
     WriteNumber(6, 0, gUpperOct.mValue + 1, 2);
     WriteNumber(11, 0, gUpperCh.mValue, 2);

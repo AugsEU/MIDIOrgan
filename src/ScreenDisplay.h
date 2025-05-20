@@ -15,8 +15,9 @@ extern LiquidCrystal_I2C gLcd;
 
 void LcdInit();
 void UpdateScreen();
-void PushDesiredChars();
 void SetScreenPage(ScreenPage page);
+
+void WriteSpecialChar(uint8_t id, uint8_t x, uint8_t y);
 
 void SetLines(const char* topLine, const char* botLine);
 
