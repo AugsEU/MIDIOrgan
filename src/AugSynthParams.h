@@ -58,18 +58,15 @@
 #define DELAY_MODE_NORMAL       0
 #define DELAY_MODE_SLAPBACK     1
 #define DELAY_MODE_OCTAVE       2
-#define DELAY_MODE_REVERSE      3
+#define DELAY_MODE_GLITCH       3
 #define NUM_DELAY_MODES         4
 
 // Oscillator modes
-#define OSC_MODE_SINE           0 // Si
-#define OSC_MODE_SQUARE         1 // Sq
-#define OSC_MODE_SAW            2 // So
-#define OSC_MODE_TRIANGLE       3 // tr
-#define OSC_MODE_RAMP           4 // ro
-#define OSC_MODE_GLITCH         5 // GL
-#define OSC_MODE_NOISE          6 // no
-#define NUM_OSC_MODES           7
+#define OSC_MODE_SINE           0
+#define OSC_MODE_SQUARE         1
+#define OSC_MODE_SAW            2 
+#define OSC_MODE_NOISE          3 
+#define NUM_OSC_MODES           4
 #define NUM_LFO_OSC_MODES       3
 
 // Filter modes
@@ -79,6 +76,25 @@
 #define FILTER_MODE_HP          3
 #define NUM_FILTER_MODES        4
 
+// Tuning modes
+#define TUNING_12TET            0
+#define TUNING_Cn_JI            1
+#define TUNING_Cs_JI            2
+#define TUNING_Dn_JI            3
+#define TUNING_Ds_JI            4
+#define TUNING_En_JI            5
+#define TUNING_Fn_JI            6
+#define TUNING_Fs_JI            7
+#define TUNING_Gn_JI            8
+#define TUNING_Gs_JI            9
+#define TUNING_An_JI            10
+#define TUNING_As_JI            11
+#define TUNING_Bn_JI            12
+#define TUNING_24TET            13
+#define CIRCLE_OF_5             14
+#define WONKY                   15
+#define NUM_TUNINGS             16
+
 enum AugSynthPageType
 {
     ASP_GENERAL,
@@ -87,6 +103,9 @@ enum AugSynthPageType
     ASP_OSC2,
     ASP_VCF,
     ASP_LFO,
+    ASP_LFO_OSC1,
+    ASP_LFO_OSC2,
+    ASP_LFO_FILT,
     NUM_PAGE_TYPES
 };
 

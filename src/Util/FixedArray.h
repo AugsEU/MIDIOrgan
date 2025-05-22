@@ -8,9 +8,19 @@ class FixedArray
 {
 private:
     T mData[MaxLength];
-    size_t mCurrentLength = 0;
+    size_t mCurrentLength;
 
 public:
+    FixedArray()
+    {
+        for(uint8_t i = 0; i < MaxLength; i++)
+        {
+            mData[i] = T();
+        }
+
+        mCurrentLength = 0;
+    }
+
     // Standard array access functions
     T* begin() { return mData; }
     const T* begin() const { return mData; }

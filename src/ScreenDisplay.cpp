@@ -4,6 +4,8 @@
 #include <Util/TimeInfo.h>
 #include <Tempo.h>
 #include <MidiOutput.h>
+#include <AugSynth.h>
+#include <Util/LocStrings.h>
 
 struct CharmapInfo
 {
@@ -17,7 +19,7 @@ struct CharmapInfo
 #define CREATE_CHAR_MAP(_id_, _name_, ...) \
     static_assert(_id_<NUM_CHAR_MAPS); \
     constexpr uint8_t CID_##_name_ = _id_; \
-    const char CM_##_name_[8] PROGMEM = { __VA_ARGS__ };
+    const uint8_t CM_##_name_[8] = { __VA_ARGS__ };
 
 #define DEFINE_CHAR_ARRAY_ELEM(_id_, _name_, ...) \
     CM_##_name_,
@@ -30,7 +32,7 @@ struct CharmapInfo
     TABLE_ENTRY_FUNC(4, ASP_GENERAL_U, 0xE, 0xA, 0xE, 0xA, 0x0, 0x8, 0x8, 0xE)   \
     TABLE_ENTRY_FUNC(5, ASP_GENERAL_L, 0x8, 0x8, 0xE, 0x0, 0x0, 0xE, 0xE, 0x0)   \
     TABLE_ENTRY_FUNC(6, ASP_DELAY_U, 0xC, 0xA, 0xA, 0xC, 0x0, 0x8, 0x8, 0xE)     \
-    TABLE_ENTRY_FUNC(7, ASP_DELAY_L, 0xE, 0x4, 0x4, 0x0, 0x10, 0x10, 0x14, 0x15) \
+    TABLE_ENTRY_FUNC(7, ASP_DELAY_L, 0xA, 0x4, 0x4, 0x0, 0x10, 0x10, 0x14, 0x15) \
     TABLE_ENTRY_FUNC(8, ASP_OSC_U, 0xE, 0xA, 0xA, 0xE, 0x0, 0x6, 0x4, 0xC)       \
     TABLE_ENTRY_FUNC(9, ASP_OSC1_L, 0xE, 0x8, 0xE, 0x0, 0x4, 0xC, 0x4, 0x4)      \
     TABLE_ENTRY_FUNC(10, ASP_OSC2_L, 0xE, 0x8, 0xE, 0x0, 0xC, 0x4, 0x8, 0xC)     \
@@ -42,7 +44,7 @@ struct CharmapInfo
 constexpr uint8_t MAX_CHAR_STORAGE = 8;
 constexpr size_t NUM_CHAR_MAPS = 15;
 CHAR_MAPS_TABLE(CREATE_CHAR_MAP)
-constexpr const char* CID_TO_CM[] = {CHAR_MAPS_TABLE(DEFINE_CHAR_ARRAY_ELEM)};
+constexpr const uint8_t* CID_TO_CM[] = {CHAR_MAPS_TABLE(DEFINE_CHAR_ARRAY_ELEM)};
 
 constexpr uTimeMs REFRESH_PERIOD = 10; // 10ms for 100FPS.
 constexpr uint8_t SCREEN_WIDTH = 16;
@@ -91,7 +93,21 @@ uTimeMs gPageChangeTime;
 /// ===================================================================================
 void UpdateFreeCharmaps();
 bool PushDesiredChars();
-const char* const PedalModeToCharsShort(PedalMode mode);
+
+void WriteSpecialChar(uint8_t x, uint8_t y, uint8_t id);
+void SetLines(const char* topLine, const char* botLine);
+
+
+void EnterGeneralInfo();
+void WriteGeneralInfo();
+
+void EnterPedalInfo();
+void WritePedalInfo();
+
+void EnterSynthEdit();
+void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param);
+void WriteSynthEdit();
+
 
 /// ===================================================================================
 /// Init
@@ -139,6 +155,9 @@ void SetScreenPage(ScreenPage page)
         case SP_PEDAL_INFO:
             EnterPedalInfo();
             break;
+        case SP_AUG_SYNTH_EDIT:
+            EnterSynthEdit();
+            break;
         }
     }
     gCurrScreenPage = page;
@@ -165,6 +184,10 @@ void UpdateScreen()
         break;
     case ScreenPage::SP_PEDAL_INFO:
         WritePedalInfo();
+        break;
+    case SP_AUG_SYNTH_EDIT:
+        WriteSynthEdit();
+        break;
     default:
         break;
     }
@@ -209,7 +232,7 @@ bool PushDesiredChars()
 
     for(uint8_t y = 0; y < SCREEN_HEIGHT; y++)
     {
-        uint8_t lastWrittenIdx = 255;
+        uint8_t lastWrittenIdx = 254;
         for(uint8_t x = 0; x < SCREEN_WIDTH; x++)
         {
             uint8_t idx = y * SCREEN_WIDTH + x;
@@ -222,6 +245,8 @@ bool PushDesiredChars()
                 {
                     gLcd.setCursor(x, y);
                 }
+
+                lastWrittenIdx = idx;
                 gLcd.print(desired);
                 numChanged++;
 
@@ -244,14 +269,14 @@ void UpdateFreeCharmaps()
 {
     for(uint8_t i = 0; i < NUM_SCREEN_CHARS; i++)
     {
-        char desired = gDesiredChars[i];
-        if((uint8_t)desired < MAX_CHAR_STORAGE)// Is a special char
+        uint8_t desired = (uint8_t)gDesiredChars[i];
+        if(desired < MAX_CHAR_STORAGE)// Is a special char
         {
             gLoadedCharmaps[desired] |= 0x80;// Mark as needed.
         }
 
-        char onScreen = gCurrentChars[i];
-        if((uint8_t)onScreen < MAX_CHAR_STORAGE)// Is a special char
+        uint8_t onScreen = (uint8_t)gCurrentChars[i];
+        if(onScreen < MAX_CHAR_STORAGE)// Is a special char
         {
             gLoadedCharmaps[onScreen] |= 0x80;// Mark as needed.
         }
@@ -271,7 +296,8 @@ void UpdateFreeCharmaps()
     }
 }
 
-void WriteSpecialChar(uint8_t id, uint8_t x, uint8_t y)
+/// @brief Write a special character. May need to load it.
+void WriteSpecialChar(uint8_t x, uint8_t y, uint8_t id)
 {
     uint8_t idx = x + y * SCREEN_WIDTH;
     if(gCharmapInfos[id].mLoadedSlot == 0xFF)
@@ -315,6 +341,7 @@ void SetLines(const char* topLine, const char* botLine)
     }
 }
 
+/// @brief Clear an entire line
 void ClearLine(uint8_t y)
 {
     for(uint8_t i = 0; i < SCREEN_WIDTH; i++)
@@ -323,8 +350,19 @@ void ClearLine(uint8_t y)
     }
 }
 
+
+/// @brief Write a number of spaces
+void ClearSpace(uint8_t x, uint8_t y, uint8_t len)
+{
+    for(uint8_t i = 0; i < len; i++)
+    {
+        gDesiredChars[x + i + y * SCREEN_WIDTH] = ' ';
+    }
+}
+
+
 template<typename T>
-void WriteNumber(uint8_t x, uint8_t y, T value, uint8_t maxDigits)
+void WriteNumber(uint8_t x, uint8_t y, T value, uint8_t maxDigits, bool spaceNegative = false)
 {
     // Handle negative numbers
     uint8_t idx = y * SCREEN_WIDTH + x;
@@ -336,6 +374,10 @@ void WriteNumber(uint8_t x, uint8_t y, T value, uint8_t maxDigits)
     {
         *writePtr++ = '-';
         value = -value;
+    }
+    else if(spaceNegative)
+    {
+        *writePtr++ = ' ';
     }
 
     // Convert digits
@@ -372,8 +414,12 @@ void WriteString(uint8_t x, uint8_t y, const char* buffer, uint8_t len)
     char* writePtr = gDesiredChars + idx;
     char* writeEnd = writePtr + len;
     char* safetyEnd = gDesiredChars + NUM_SCREEN_CHARS;
+    if(writeEnd > safetyEnd)
+    {
+        writeEnd = safetyEnd;
+    }
 
-    while (len > 0 && writePtr < writeEnd)
+    while (writePtr < writeEnd)
     {
         char toWrite = *buffer;
         if(toWrite == '\0')
@@ -383,11 +429,6 @@ void WriteString(uint8_t x, uint8_t y, const char* buffer, uint8_t len)
 
         *writePtr++ = toWrite;
         buffer++;
-
-        if(writePtr > safetyEnd)
-        {
-            return;
-        }
     }
 
     while(writePtr < writeEnd)
@@ -418,10 +459,10 @@ void WriteGeneralInfo()
 
     ClearLine(0);
     ClearLine(1);
-    WriteSpecialChar(CID_QUARTER_NOTE, 1, 0);
-    WriteSpecialChar(CID_OCTAVE, 4, 0);
-    WriteSpecialChar(CID_CHANNEL, 9, 0);
-    WriteSpecialChar(CID_PEDAL, 13, 1);
+    WriteSpecialChar(1, 0, CID_QUARTER_NOTE);
+    WriteSpecialChar(4, 0, CID_OCTAVE);
+    WriteSpecialChar(9, 0, CID_CHANNEL);
+    WriteSpecialChar(13, 1, CID_PEDAL);
 
     WriteNumber(6, 0, gUpperOct.mValue + 1, 2);
     WriteNumber(11, 0, gUpperCh.mValue, 2);
@@ -455,83 +496,6 @@ void EnterPedalInfo()
     SetLines(SCREEN_EMPTY_LINE, SCREEN_EMPTY_LINE);
 }
 
-/// @brief Convert pedal mode to string (max 10 len)
-const char* const PedalModeToChars(PedalMode mode)
-{
-    switch (mode)
-    {    
-        case PM_OFF:
-            return "Off";
-        case PM_VELOCITY:
-            return "Velocity";
-        case PM_PITCH_BEND:
-            return "Pitch Bend";
-        case PM_MODULATION:
-            return "Modulation";
-        case PM_VOLUME:
-            return "Volume";
-        case PM_INTERNAL:
-            return "Internal";
-        default:
-            break;
-    }
-
-    return "!ERROR!";
-}
-
-/// @brief Convert pedal mode to string (max 2 len)
-const char* const PedalModeToCharsShort(PedalMode mode)
-{
-    switch (mode)
-    {    
-        case PM_OFF:
-            return "--";
-        case PM_VELOCITY:
-            return "Ve";
-        case PM_PITCH_BEND:
-            return "Pb";
-        case PM_MODULATION:
-            return "Md";
-        case PM_VOLUME:
-            return "Vo";
-        case PM_INTERNAL:
-            return "In";
-        default:
-            break;
-    }
-
-    return "!ERROR!";
-}
-
-/// @brief Convert pedal internal param to string
-const char* const PedalInternalToString(PedalInternalParam param)
-{
-    switch (param)
-    {    
-        case PIP_GAIN:
-            return "Gain";
-        case PIP_DELAY_TIME:
-            return "Delay Time";
-        case PIP_DELAY_FEEDBACK:
-            return "Delay Feedback";
-        case PIP_DCO_VOL_1:
-            return "Osc1 Volume";
-        case PIP_DCO_VOL_2:
-            return "Osc2 Volume";
-        case PIP_CUTOFF:
-            return "Filter Freq";
-        case PIP_LFO_RATE:
-            return "LFO Speed";
-        case PIP_LFO_OSC1_FREQ:
-            return "LFO Osc1 Freq";
-        case PIP_LFO_OSC2_FREQ:
-            return "LFO Osc2 Freq";
-        default:
-            break;
-    }
-
-    return "!ERROR!";
-}
 
 /// @brief Write out the general info section
 void WritePedalInfo()
@@ -571,4 +535,130 @@ void WritePedalInfo()
     }
 
     ReturnToScreenAfterTime(ScreenPage::SP_GENERAL_INFO, 2000);
+}
+
+/// ===================================================================================
+/// Pedal Info
+/// ===================================================================================
+
+/// @brief Called when entering the synth edit page
+void EnterSynthEdit()
+{
+
+}
+
+void WriteParam(uint8_t paramType, uint8_t x, uint8_t y)
+{
+
+}
+
+/// @brief Called each frame to write
+void WriteSynthEdit()
+{
+    AugSynthPageParams& currParams = GetCurrPageParams();
+    ClearLine(0);
+    ClearLine(1);
+    uint8_t leftWrite = 1;
+    uint8_t rightWrite = 9;
+    // Draw side header
+    switch (currParams.mPageType)
+    {
+    case AugSynthPageType::ASP_GENERAL:
+        WriteSpecialChar(0, 0, CID_ASP_GENERAL_U);
+        WriteSpecialChar(0, 1, CID_ASP_GENERAL_L);
+        break;
+    case AugSynthPageType::ASP_OSC1:
+        WriteSpecialChar(0, 0, CID_ASP_OSC_U);
+        WriteSpecialChar(0, 1, CID_ASP_OSC1_L);
+        break;
+    case AugSynthPageType::ASP_OSC2:
+        WriteSpecialChar(0, 0, CID_ASP_OSC_U);
+        WriteSpecialChar(0, 1, CID_ASP_OSC2_L);
+        break;
+    case AugSynthPageType::ASP_VCF:
+        WriteSpecialChar(0, 0, CID_ASP_FILTER_U);
+        WriteSpecialChar(0, 1, CID_ASP_FILTER_L);
+        break;
+    case AugSynthPageType::ASP_LFO:
+        WriteSpecialChar(0, 0, CID_ASP_LFO_U);
+        WriteSpecialChar(0, 1, CID_ASP_LFO_L);
+        break;
+    case AugSynthPageType::ASP_LFO_OSC1:
+        leftWrite = 2;
+        WriteSpecialChar(0, 0, CID_ASP_LFO_U);
+        WriteSpecialChar(0, 1, CID_ASP_LFO_L);
+        WriteSpecialChar(1, 0, CID_ASP_OSC_U);
+        WriteSpecialChar(1, 1, CID_ASP_OSC1_L);
+        break;
+    case AugSynthPageType::ASP_LFO_OSC2:
+        leftWrite = 2;
+        WriteSpecialChar(0, 0, CID_ASP_LFO_U);
+        WriteSpecialChar(0, 1, CID_ASP_LFO_L);
+        WriteSpecialChar(1, 0, CID_ASP_OSC_U);
+        WriteSpecialChar(1, 1, CID_ASP_OSC2_L);
+        break;
+    case AugSynthPageType::ASP_LFO_FILT:
+        leftWrite = 2;
+        WriteSpecialChar(0, 0, CID_ASP_LFO_U);
+        WriteSpecialChar(0, 1, CID_ASP_LFO_L);
+        WriteSpecialChar(1, 0, CID_ASP_FILTER_U);
+        WriteSpecialChar(1, 1, CID_ASP_FILTER_L);
+        break;
+    case AugSynthPageType::ASP_DELAY:
+        WriteSpecialChar(0, 0, CID_ASP_DELAY_U);
+        WriteSpecialChar(0, 1, CID_ASP_DELAY_L);
+        break;
+    default:
+        break;
+    }
+
+    // Note: Order is important. We want left write first.
+    WriteSynthParam(leftWrite, 0, currParams.mParameters[0]);
+    WriteSynthParam(leftWrite, 1, currParams.mParameters[2]);
+
+    WriteSynthParam(rightWrite, 0, currParams.mParameters[1]);
+    WriteSynthParam(rightWrite, 1, currParams.mParameters[3]);
+}
+
+void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param)
+{
+    if(param == nullptr)
+    {
+        ClearSpace(x, y, 7);
+        return;
+    }
+
+    switch (param->mParamNum) // Int params
+    {
+        case ASP_TUNING:
+            WriteString(x, y, TuningToString(param->mValue), 7);
+            return;
+        case ASP_DELAY_MODE:
+            WriteString(x, y, DelayModeToString(param->mValue), 7);
+            return;
+        case ASP_DCO_WAVE_TYPE_1:
+        case ASP_DCO_WAVE_TYPE_2:
+        case ASP_LFO_WAVE_TYPE:
+            WriteString(x, y, OscModeToString(param->mValue), 7);
+            return;
+        case ASP_VCF_MODE:
+            WriteString(x, y, FilterModeToString(param->mValue), 7);
+            return;
+        default:
+            break;
+    }
+
+    uint8_t numberOffset = 4;
+    const char* const paramName = AugNumberParamToString(param->mParamNum);
+
+    switch (param->mParamNum) 
+    {
+        case ASP_LFO_OSC1_VOLUME:
+        case ASP_LFO_OSC2_VOLUME:
+            numberOffset = 3;
+            break;
+    }
+
+    WriteString(x, y, paramName, 4);
+    WriteNumber(x + numberOffset, y, param->mValue, 2, true);
 }

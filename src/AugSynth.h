@@ -9,7 +9,7 @@ constexpr uint8_t NUM_SYNTH_DIALS = 4;
 
 struct AugSynthParam
 {
-    uint8_t mParamNum;
+    uint8_t mParamNum; //@TODO get rid of this?
     int8_t mValue;
     int8_t mMaxValue;
     int8_t mMinValue;
@@ -37,7 +37,7 @@ void InitAugSynth();
 void InitSynthPatch();
 void BindSynthPages();
 void SendAllParams();
-
 void UpdateAugSynth();
 
+AugSynthPageParams& GetCurrPageParams();
 #endif // AUG_SYNTH_H

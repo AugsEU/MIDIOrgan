@@ -2,6 +2,8 @@
 #include <AugSynthParams.h>
 #include <UserControls.h>
 #include <MidiOutput.h>
+#include <Input/DigitalButton.h>
+#include <ScreenDisplay.h>
 
 /// ===================================================================================
 /// Globals
@@ -25,6 +27,7 @@ AugSynthParam gAugSynthParams[ASP_NUM_PARAMS];
 
 uint8_t gCurrParamPage = 0;
 AugSynthPageParams gSynthPages[NUM_SYNTH_PAGES];
+DigitalButton gSynthEditBtn;
 
 uint8_t gForceIdx = 0;
 
@@ -270,13 +273,13 @@ void BindSynthPages()
     BIND_SCREEN(6, ASP_LFO,     &gAugSynthParams[ASP_LFO_WAVE_TYPE],        &gAugSynthParams[ASP_LFO_ATTACK],
                                 &gAugSynthParams[ASP_LFO_RATE],             &gAugSynthParams[ASP_LFO_WOBBLE]);
 
-    BIND_SCREEN(7, ASP_LFO,     &gAugSynthParams[ASP_LFO_OSC1_VOLUME],      &gAugSynthParams[ASP_LFO_OSC1_SHAPE],
+    BIND_SCREEN(7, ASP_LFO_OSC1,&gAugSynthParams[ASP_LFO_OSC1_VOLUME],      &gAugSynthParams[ASP_LFO_OSC1_SHAPE],
                                 &gAugSynthParams[ASP_LFO_OSC1_TUNE],        nullptr);
     
-    BIND_SCREEN(8, ASP_LFO,     &gAugSynthParams[ASP_LFO_OSC2_VOLUME],      &gAugSynthParams[ASP_LFO_OSC2_SHAPE],
+    BIND_SCREEN(8, ASP_LFO_OSC2,&gAugSynthParams[ASP_LFO_OSC2_VOLUME],      &gAugSynthParams[ASP_LFO_OSC2_SHAPE],
                                 &gAugSynthParams[ASP_LFO_OSC2_TUNE],        nullptr);
 
-    BIND_SCREEN(9, ASP_LFO,     &gAugSynthParams[ASP_LFO_VCF_CUTOFF],       nullptr,
+    BIND_SCREEN(9, ASP_LFO_FILT,&gAugSynthParams[ASP_LFO_VCF_CUTOFF],       nullptr,
                                 &gAugSynthParams[ASP_LFO_VCF_RES],          nullptr);
 
     // Delay
@@ -287,7 +290,7 @@ void BindSynthPages()
 void InitSynthPatch()
 {
     // General          Type                                                     Default  min  max
-    gAugSynthParams[ASP_TUNING             ] = AugSynthParam(ASP_TUNING             , 0,  0,   13);
+    gAugSynthParams[ASP_TUNING             ] = AugSynthParam(ASP_TUNING             , 0,  0,   NUM_TUNINGS-1);
     gAugSynthParams[ASP_DRIVE              ] = AugSynthParam(ASP_DRIVE              , 0,  0,   50);
     gAugSynthParams[ASP_GAIN               ] = AugSynthParam(ASP_GAIN               , 25, 0,   50);
     gAugSynthParams[ASP_DELAY_TIME         ] = AugSynthParam(ASP_DELAY_TIME         , 0,  0,   50);
@@ -348,29 +351,54 @@ void SendAllParams()
 
 void UpdateAugSynth()
 {
+    ScreenPage currPage = gCurrScreenPage;
+    bool onSynthEdit = currPage == ScreenPage::SP_AUG_SYNTH_EDIT;
+ 
     // Poll encoders
-    //bool pressed = gVirtualMuxPins[VPIN_PAGE_SELECT_SW].IsActive(); // @TODO Default preset?
-    int8_t pageDelta = gRotaryEncoders[PAGE_SELECT_DIAL_IDX].ConsumeDelta();
-    if(pageDelta < 0)
+    bool pressed = gVirtualMuxPins[VPIN_PAGE_SELECT_SW].IsActive();
+    gSynthEditBtn.UpdateState(pressed);
+    if(gSynthEditBtn.IsPressed())
     {
-        if(gCurrParamPage < NUM_SYNTH_PAGES-1)
+        if(!onSynthEdit)
         {
-            gCurrParamPage++;
+            SetScreenPage(ScreenPage::SP_AUG_SYNTH_EDIT);
         }
-    }
-    else if(pageDelta > 0)
-    {
-        if(gCurrParamPage > 0)
+        else
         {
-            gCurrParamPage--;
+            SetScreenPage(ScreenPage::SP_GENERAL_INFO);
         }
     }
 
-    gSynthPages[gCurrParamPage].UpdateValues();
+    if(onSynthEdit)
+    {
+        int8_t pageDelta = gRotaryEncoders[PAGE_SELECT_DIAL_IDX].ConsumeDelta();
+        if(pageDelta < 0)
+        {
+            if(gCurrParamPage > 0)
+            {
+                gCurrParamPage--;
+            }
+        }
+        else if(pageDelta > 0)
+        {
+            if(gCurrParamPage < NUM_SYNTH_PAGES-1)
+            {
+                gCurrParamPage++;
+            }
+        }
+
+        GetCurrPageParams().UpdateValues();
+    }
 
     gAugSynthParams[gForceIdx++].SendValueToBpSynth();
     if(gForceIdx >= ASP_NUM_PARAMS)
     {
         gForceIdx = 0;
     }
+}
+
+
+AugSynthPageParams& GetCurrPageParams()
+{
+    return gSynthPages[gCurrParamPage];
 }
