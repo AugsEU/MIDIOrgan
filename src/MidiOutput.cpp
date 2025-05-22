@@ -57,13 +57,13 @@ StableAnalog gKnob6;
 StableAnalog gKnob7;
 
 uint8_t gParamToSend = 0;
+void SetAugSynthParam(const AugSynthPage category, const uint8_t index, const float value);
 #endif // AUG_SYNTH DEBUG
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 void SendMessageToBp();
 void SendParameterToBp(const uint8_t paramNum, const float value);
-void SetAugSynthParam(const AugSynthPage category, const uint8_t index, const float value);
 
 void ResetPedalForModeChange();
 
