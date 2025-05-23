@@ -42,13 +42,13 @@
 #define ASP_LFO_RATE            27 // (x*x*35+0.1)*SAMPLE_PERIOD
 #define ASP_LFO_WAVE_TYPE       28 // Int param
 #define ASP_LFO_ATTACK          29 // 1.0f / (SAMPLE_RATE * (8.01f - 8.0f * atk1));
-#define ASP_LFO_WOBBLE          30 // -0.5f to 0.5f
-#define ASP_LFO_OSC1_TUNE       31 // -0.5f to 0.5f
-#define ASP_LFO_OSC1_VOLUME     32 // -0.5f to 0.5f
-#define ASP_LFO_OSC1_SHAPE      33 // -0.5f to 0.5f
-#define ASP_LFO_OSC2_TUNE       34 // -0.5f to 0.5f
-#define ASP_LFO_OSC2_VOLUME     35 // -0.5f to 0.5f
-#define ASP_LFO_OSC2_SHAPE      36 // -0.5f to 0.5f
+#define ASP_LFO_WOBBLE          30 // -0.5 to 0.5
+#define ASP_LFO_OSC1_TUNE       31 // -0.5 to 0.5
+#define ASP_LFO_OSC1_VOLUME     32 // -0.5 to 0.5
+#define ASP_LFO_OSC1_SHAPE      33 // -0.5 to 0.5
+#define ASP_LFO_OSC2_TUNE       34 // -0.5 to 0.5
+#define ASP_LFO_OSC2_VOLUME     35 // -0.5 to 0.5
+#define ASP_LFO_OSC2_SHAPE      36 // -0.5 to 0.5
 #define ASP_LFO_VCF_CUTOFF      37 // -0.5 to 0.5
 #define ASP_LFO_VCF_RES         38 // -0.5 to 0.5
 
@@ -64,9 +64,10 @@
 // Oscillator modes
 #define OSC_MODE_SINE           0
 #define OSC_MODE_SQUARE         1
-#define OSC_MODE_SAW            2 
-#define OSC_MODE_NOISE          3 
-#define NUM_OSC_MODES           4
+#define OSC_MODE_SAW            2
+#define OSC_MODE_ORGAN          3 
+#define OSC_MODE_NOISE          4 
+#define NUM_OSC_MODES           5
 #define NUM_LFO_OSC_MODES       3
 
 // Filter modes

@@ -39,7 +39,7 @@ uint16_t gapPedalValue;
 StableAnalog gStablePedal;
 uint32_t gPedalValueCache = 0;
 
-StableState<16> gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
+StableState<5> gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 RotaryEncoder gRotaryEncoders[NUM_ROTARY_ENCODERS];
 StableState<4> gRotaryEncoderMuxPins[8*2];
 

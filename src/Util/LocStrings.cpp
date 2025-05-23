@@ -154,6 +154,8 @@ const char* const OscModeToString(uint8_t osc)
         return "Square";
     case OSC_MODE_SAW:
         return "Saw";
+    case OSC_MODE_ORGAN:
+        return "Organ";
     case OSC_MODE_NOISE:
         return "Noise";
     default:

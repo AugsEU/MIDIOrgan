@@ -37,7 +37,7 @@ extern uint16_t gapPedalMode;
 extern uint16_t gapPedalSelect;
 
 // Virtual multiplexer pins
-extern StableState<16> gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
+extern StableState<5> gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 extern RotaryEncoder gRotaryEncoders[NUM_ROTARY_ENCODERS];
 
 template<typename T, uint8_t divisions, T minValue>

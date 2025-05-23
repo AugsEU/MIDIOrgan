@@ -119,9 +119,8 @@ void AugSynthParam::SendValueToBpSynth()
 	case ASP_DRIVE:
         fv = 1.0f + fv * (DRIVE_ALPHA-1.0f);
 		break;
-	case ASP_GAIN: // 0 to 1/7
+	case ASP_GAIN: // 0 to 1
         fv *= fv;
-        fv *= 1.0f / 7.0f;
 		break;
 	case ASP_DELAY_TIME: // 0 to 1 
     case ASP_DELAY_FEEDBACK:
@@ -139,10 +138,8 @@ void AugSynthParam::SendValueToBpSynth()
 	case ASP_DCO_VOL_2:
         fv *= fv;
 		break;
-	case ASP_DCO_WS_1: // -1.0f to 1.0f
+	case ASP_DCO_WS_1: // 0.0f to 1.0f
 	case ASP_DCO_WS_2:
-        fv *= (0.95f - 0.5f);
-        fv += 0.5f;
 		break;
 
     // ENV
@@ -182,6 +179,10 @@ void AugSynthParam::SendValueToBpSynth()
 	case ASP_LFO_WOBBLE: // -0.5f to 0.5f
     case ASP_LFO_OSC1_VOLUME:
     case ASP_LFO_OSC2_VOLUME:
+    case ASP_LFO_OSC1_SHAPE:
+    case ASP_LFO_OSC2_SHAPE:
+    case ASP_LFO_VCF_CUTOFF:
+    case ASP_LFO_VCF_RES:
         fv *= 0.5f;
 		break;
     case ASP_LFO_OSC1_TUNE: // -0.5 to 0.5 weighted to small values
@@ -306,7 +307,7 @@ void InitSynthPatch()
     gAugSynthParams[ASP_DCO_WAVE_TYPE_2    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_2    , 0,  0,   NUM_OSC_MODES-1);
     gAugSynthParams[ASP_DCO_TUNE_2         ] = AugSynthParam(ASP_DCO_TUNE_2         , 0,  -50, 50);
     gAugSynthParams[ASP_DCO_VOL_2          ] = AugSynthParam(ASP_DCO_VOL_2          , 0,  0,   50);
-    gAugSynthParams[ASP_DCO_WS_2           ] = AugSynthParam(ASP_DCO_WS_1           , 10, 0,   20);
+    gAugSynthParams[ASP_DCO_WS_2           ] = AugSynthParam(ASP_DCO_WS_2           , 10, 0,   20);
 
     // ENV
     gAugSynthParams[ASP_ENV_ATTACK1        ] = AugSynthParam(ASP_ENV_ATTACK1        , 5,  0,   99);
