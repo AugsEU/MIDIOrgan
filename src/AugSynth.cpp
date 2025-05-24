@@ -12,7 +12,7 @@
 const int SAMPLE_RATE = 32000;
 const float DRIVE_K = 1.0f;
 const float DRIVE_ALPHA = 4.0f * DRIVE_K + 1.0f;
-const float ENV_MAX_LENGTH = 20.0f;
+const float ENV_MAX_LENGTH = 30.0f;
 const float ENV_MIN_LENGTH = 0.01f;
 
 constexpr uint8_t VPIN_PAGE_SELECT_SW = 6;
@@ -99,20 +99,6 @@ void AugSynthParam::SendValueToBpSynth()
 
     float fv = GetFloatValue();
 
-    // Special exception: Release at -1 sets it to whatever decay is.
-    if(mValue == -1)
-    {
-        switch (mParamNum)
-        {
-        case ASP_ENV_RELEASE1:
-            fv = gAugSynthParams[ASP_ENV_DECAY1].GetFloatValue();   
-            break;
-        case ASP_ENV_RELEASE2:
-            fv = gAugSynthParams[ASP_ENV_DECAY2].GetFloatValue();   
-            break;
-        }
-    }
-
     switch (mParamNum)
     {
     // General
@@ -131,8 +117,27 @@ void AugSynthParam::SendValueToBpSynth()
     // DCO
 	case ASP_DCO_TUNE_1:
 	case ASP_DCO_TUNE_2:
-        fv = fv * fv * fv;
-        fv = powf(2, fv);
+        if(mValue == 40)
+        {
+            fv = 2.0f;
+        }
+        else if(mValue == 33)
+        {
+            fv = 1.5f;
+        }
+        else if(mValue == -40)
+        {
+            fv = -2.0f;
+        }
+        else if(mValue == -33)
+        {
+            fv = -1.5f;
+        }
+        else
+        {
+            fv = fv * fv * fv;
+            fv = powf(4, fv);
+        }
 		break;
 	case ASP_DCO_VOL_1:
 	case ASP_DCO_VOL_2:
@@ -161,8 +166,11 @@ void AugSynthParam::SendValueToBpSynth()
 	case ASP_VCF_CUTOFF: // x*x*x
         fv = fv * fv * fv;
 		break;
-	case ASP_VCF_RES: // 0 to 1
+	case ASP_VCF_RES: // 0 to 1 weight high values
     case ASP_VCF_FOLLOW:
+        fv = 1.0f - fv;
+        fv *= fv * fv;
+        fv = 1.0f - fv;
 		break;
 
     // LFO
@@ -185,10 +193,9 @@ void AugSynthParam::SendValueToBpSynth()
     case ASP_LFO_VCF_RES:
         fv *= 0.5f;
 		break;
-    case ASP_LFO_OSC1_TUNE: // -0.5 to 0.5 weighted to small values
+    case ASP_LFO_OSC1_TUNE: // -1 to 1 weighted to small values
     case ASP_LFO_OSC2_TUNE:
         fv *= fabsf(fv);
-        fv *= 0.5f;
         break;
     }
 
@@ -302,28 +309,28 @@ void InitSynthPatch()
     // DCO 
     gAugSynthParams[ASP_DCO_WAVE_TYPE_1    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_1    , 0,  0,   NUM_OSC_MODES-1);
     gAugSynthParams[ASP_DCO_TUNE_1         ] = AugSynthParam(ASP_DCO_TUNE_1         , 0,  -50, 50);
-    gAugSynthParams[ASP_DCO_VOL_1          ] = AugSynthParam(ASP_DCO_VOL_1          , 50,  0,  50);
-    gAugSynthParams[ASP_DCO_WS_1           ] = AugSynthParam(ASP_DCO_WS_1           , 10, 0,   20);
+    gAugSynthParams[ASP_DCO_VOL_1          ] = AugSynthParam(ASP_DCO_VOL_1          , 50, 0,   50);
+    gAugSynthParams[ASP_DCO_WS_1           ] = AugSynthParam(ASP_DCO_WS_1           , 5,  0,   20);
     gAugSynthParams[ASP_DCO_WAVE_TYPE_2    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_2    , 0,  0,   NUM_OSC_MODES-1);
     gAugSynthParams[ASP_DCO_TUNE_2         ] = AugSynthParam(ASP_DCO_TUNE_2         , 0,  -50, 50);
     gAugSynthParams[ASP_DCO_VOL_2          ] = AugSynthParam(ASP_DCO_VOL_2          , 0,  0,   50);
-    gAugSynthParams[ASP_DCO_WS_2           ] = AugSynthParam(ASP_DCO_WS_2           , 10, 0,   20);
+    gAugSynthParams[ASP_DCO_WS_2           ] = AugSynthParam(ASP_DCO_WS_2           , 5,  0,   20);
 
     // ENV
     gAugSynthParams[ASP_ENV_ATTACK1        ] = AugSynthParam(ASP_ENV_ATTACK1        , 5,  0,   99);
     gAugSynthParams[ASP_ENV_DECAY1         ] = AugSynthParam(ASP_ENV_DECAY1         , 10, 0,   99);
     gAugSynthParams[ASP_ENV_SUSTAIN1       ] = AugSynthParam(ASP_ENV_SUSTAIN1       , 40, 0,   50);
-    gAugSynthParams[ASP_ENV_RELEASE1       ] = AugSynthParam(ASP_ENV_RELEASE1       , -1, -1,  99); // Note: -1 is decay
+    gAugSynthParams[ASP_ENV_RELEASE1       ] = AugSynthParam(ASP_ENV_RELEASE1       , 10, 0,   99);
     gAugSynthParams[ASP_ENV_ATTACK2        ] = AugSynthParam(ASP_ENV_ATTACK2        , 5,  0,   99);
     gAugSynthParams[ASP_ENV_DECAY2         ] = AugSynthParam(ASP_ENV_DECAY2         , 10, 0,   99);
     gAugSynthParams[ASP_ENV_SUSTAIN2       ] = AugSynthParam(ASP_ENV_SUSTAIN2       , 40, 0,   50);
-    gAugSynthParams[ASP_ENV_RELEASE2       ] = AugSynthParam(ASP_ENV_RELEASE2       , -1, -1,  99); // Note -1 is decay
+    gAugSynthParams[ASP_ENV_RELEASE2       ] = AugSynthParam(ASP_ENV_RELEASE2       , 10, 0,   99);
    
     // VCF   
     gAugSynthParams[ASP_VCF_CUTOFF         ] = AugSynthParam(ASP_VCF_CUTOFF         , 0,  0,   50);
     gAugSynthParams[ASP_VCF_RES            ] = AugSynthParam(ASP_VCF_RES            , 0,  0,   20);
     gAugSynthParams[ASP_VCF_MODE           ] = AugSynthParam(ASP_VCF_MODE           , 0,  0,   NUM_FILTER_MODES-1);
-    gAugSynthParams[ASP_VCF_FOLLOW         ] = AugSynthParam(ASP_VCF_FOLLOW         , 0,  0,   50);
+    gAugSynthParams[ASP_VCF_FOLLOW         ] = AugSynthParam(ASP_VCF_FOLLOW         , 0,  0,   20);
    
     // LFO   
     gAugSynthParams[ASP_LFO_RATE           ] = AugSynthParam(ASP_LFO_RATE           , 25, 0,   99);
@@ -336,8 +343,8 @@ void InitSynthPatch()
     gAugSynthParams[ASP_LFO_OSC2_TUNE      ] = AugSynthParam(ASP_LFO_OSC2_TUNE      , 0,  -20, 20);
     gAugSynthParams[ASP_LFO_OSC2_VOLUME    ] = AugSynthParam(ASP_LFO_OSC2_VOLUME    , 0,  -20, 20);
     gAugSynthParams[ASP_LFO_OSC2_SHAPE     ] = AugSynthParam(ASP_LFO_OSC2_SHAPE     , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_VCF_CUTOFF     ] = AugSynthParam(ASP_LFO_VCF_CUTOFF    , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_VCF_RES        ] = AugSynthParam(ASP_LFO_VCF_RES     , 0,  -20, 20);
+    gAugSynthParams[ASP_LFO_VCF_CUTOFF     ] = AugSynthParam(ASP_LFO_VCF_CUTOFF     , 0,  -20, 20);
+    gAugSynthParams[ASP_LFO_VCF_RES        ] = AugSynthParam(ASP_LFO_VCF_RES        , 0,  -20, 20);
 
     SendAllParams();
 } 
