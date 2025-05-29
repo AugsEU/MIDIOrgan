@@ -102,12 +102,10 @@ void AugSynthParam::SendValueToBpSynth()
     switch (mParamNum)
     {
     // General
-	case ASP_DRIVE:
-        fv = 1.0f + fv * (DRIVE_ALPHA-1.0f);
-		break;
 	case ASP_GAIN: // 0 to 1
         fv *= fv;
 		break;
+    case ASP_DRIVE:
 	case ASP_DELAY_TIME: // 0 to 1 
     case ASP_DELAY_FEEDBACK:
     case ASP_DELAY_SHEAR:
@@ -117,26 +115,20 @@ void AugSynthParam::SendValueToBpSynth()
     // DCO
 	case ASP_DCO_TUNE_1:
 	case ASP_DCO_TUNE_2:
-        if(mValue == 40)
+        switch (mValue)
         {
-            fv = 2.0f;
-        }
-        else if(mValue == 33)
-        {
-            fv = 1.5f;
-        }
-        else if(mValue == -40)
-        {
-            fv = -2.0f;
-        }
-        else if(mValue == -33)
-        {
-            fv = -1.5f;
-        }
-        else
-        {
+        case 46:  fv = 3.0f; break;
+        case 40:  fv = 2.0f; break;
+        case 33:  fv = 1.5f; break;
+        case 30:  fv = 1.3333333333f; break;
+        case -30: fv = 0.75f; break;
+        case -33: fv = 0.6666666666f; break;
+        case -40: fv = 0.5f; break;
+        case -46: fv = 0.33333333333f; break;
+        default:
             fv = fv * fv * fv;
             fv = powf(4, fv);
+            break;
         }
 		break;
 	case ASP_DCO_VOL_1:

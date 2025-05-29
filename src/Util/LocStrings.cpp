@@ -128,12 +128,12 @@ const char* const DelayModeToString(uint8_t delay)
 {
     switch (delay)
     {
+    case DELAY_MODE_OFF:
+        return "Off";
     case DELAY_MODE_NORMAL:
         return "Normal";
     case DELAY_MODE_SLAPBACK:
         return "Slapbck";
-    case DELAY_MODE_OCTAVE:
-        return "Octave";
     case DELAY_MODE_GLITCH:
         return "Glitch";
     default:
@@ -156,8 +156,6 @@ const char* const OscModeToString(uint8_t osc)
         return "Saw";
     case OSC_MODE_ORGAN:
         return "Organ";
-    case OSC_MODE_NOISE:
-        return "Noise";
     default:
         break;
     }
@@ -174,8 +172,6 @@ const char* const FilterModeToString(uint8_t filt)
         return "Off";
     case FILTER_MODE_LP:
         return "Low";
-    case FILTER_MODE_BP:
-        return "Band";
     case FILTER_MODE_HP:
         return "High";
     default:

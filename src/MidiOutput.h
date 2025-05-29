@@ -21,9 +21,9 @@ enum PedalMode : uint8_t
 
 enum PedalMidiCh : uint8_t
 {
+    PMC_UPPER_LOWER,
     PMC_LOWER,
     PMC_UPPER,
-    PMC_UPPER_LOWER,
     PMC_MIDI_CH1,
     PMC_MIDI_CH2,
     PMC_MIDI_CH3,

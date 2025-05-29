@@ -15,6 +15,7 @@ constexpr int8_t LOWER_KEY_SHIFT = 5;
 constexpr int8_t UPPER_KEY_SHIFT = 9;
 constexpr uint8_t DEFAULT_PLAY_VELOCITY = 100;
 
+constexpr uint8_t BP_CMD_HEADER = 0xFF;
 constexpr uint8_t BP_CMD_NOTE_ON = 0xC0;
 constexpr uint8_t BP_CMD_NOTE_OFF = 0x80;
 constexpr uint8_t BP_CMD_SET_INT_PARAM = 0xA0;
@@ -592,13 +593,15 @@ void SendMessageToBp()
 {
     constexpr uint8_t BUFF_SIZE = sizeof(gBpMsgBuff);
 
+    Serial1.write(BP_CMD_HEADER);
+    delayMicroseconds(100); // let bp interupt finish
     for (uint8_t i = 0; i < BUFF_SIZE; i++)
     {
         Serial1.write(gBpMsgBuff[i]);
+        delayMicroseconds(100); // let bp interupt finish
     }
 
     PollRotaryEncoders();
-    delayMicroseconds(50); // let bp interupt finish
 }
 
 

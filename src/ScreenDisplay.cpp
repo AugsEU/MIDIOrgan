@@ -513,7 +513,6 @@ void WritePedalInfo()
     }
     else
     {
-        //WriteString(11, 0, "MIDI\x02", 5);
         PedalMidiCh pedalCh = GetPedalMidiCh();
 
         switch (pedalCh)
@@ -525,11 +524,13 @@ void WritePedalInfo()
             WriteString(11, 1, "Upper", 5);
             break;
         case PMC_UPPER_LOWER:
-            WriteString(5, 1, "Upper+Lower", 11);
+            WriteString(5, 1, "Lower+Upper", 11);
             break;
         default:
             uint8_t ch = ((uint8_t)pedalCh + 1) - PMC_MIDI_CH1;
-            WriteString(7, 1, "MIDI \x02", 6);
+            WriteString(7, 1, "MIDI", 4);
+            WriteSpecialChar(11, 1, CID_CHANNEL);
+
             WriteNumber(14, 1, ch, 2);
             break;
         }
@@ -539,16 +540,11 @@ void WritePedalInfo()
 }
 
 /// ===================================================================================
-/// Pedal Info
+/// Synth edit
 /// ===================================================================================
 
 /// @brief Called when entering the synth edit page
 void EnterSynthEdit()
-{
-
-}
-
-void WriteParam(uint8_t paramType, uint8_t x, uint8_t y)
 {
 
 }
