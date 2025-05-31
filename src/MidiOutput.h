@@ -94,8 +94,7 @@ void SendNoteOff(uint8_t keyNum);
 void SendNoteOn(uint8_t keyNum, uint8_t ch);
 void SendNoteOff(uint8_t keyNum, uint8_t ch);
 
-void SendNoteOnAllCh(uint8_t noteNum);
-void SendNoteOffAllCh(uint8_t noteNum);
+void SendNoteOffAllCh();
 
 uint8_t KeyNumToNote(uint8_t keyNum);
 

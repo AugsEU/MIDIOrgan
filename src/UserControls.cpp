@@ -27,6 +27,14 @@ StableState<16> gdpLoop2;
 StableState<16> gdpLoop3;
 StableState<16> gdpLoop4;
 
+StableState<16> gdpSustainPedal;
+StableState<16> gdpLoopUndo;
+StableState<16> gdpLoopClear;
+StableState<16> gdpLoop1Rec;
+StableState<16> gdpLoop2Rec;
+StableState<16> gdpLoop3Rec;
+StableState<16> gdpLoop4Rec;
+
 uint16_t gapArpGate;
 uint16_t gapMidiChUpper;
 uint16_t gapMidiChLower;
@@ -41,7 +49,7 @@ uint32_t gPedalValueCache = 0;
 
 StableState<5> gVirtualMuxPins[NUM_VIRTUAL_MUX_PIN];
 RotaryEncoder gRotaryEncoders[NUM_ROTARY_ENCODERS];
-StableState<4> gRotaryEncoderMuxPins[8*2];
+StableState<3> gRotaryEncoderMuxPins[8*2];
 
 uint8_t gAnalogReadSection = 0;
 uint8_t gAnalogReadingPin = 0xFF;
@@ -76,6 +84,13 @@ void SetupPins()
 	pinMode(PIN_LOOP2, INPUT_PULLUP);
 	pinMode(PIN_LOOP3, INPUT_PULLUP);
 	pinMode(PIN_LOOP4, INPUT_PULLUP);
+	pinMode(PIN_SUSTAIN_PEDAL, INPUT_PULLUP);
+	pinMode(PIN_LOOP_CLEAR, INPUT_PULLUP);
+	pinMode(PIN_LOOP_UNDO, INPUT_PULLUP);
+	pinMode(PIN_LOOP1_REC, INPUT_PULLUP);
+	pinMode(PIN_LOOP2_REC, INPUT_PULLUP);
+	pinMode(PIN_LOOP3_REC, INPUT_PULLUP);
+	pinMode(PIN_LOOP4_REC, INPUT_PULLUP);
 }
 
 void BeginAnalogRead(uint8_t pin)
@@ -316,7 +331,15 @@ void ReadAllPins()
 	gdpLoop2.UpdateState(PORT_LOOP2 != 0);
 	gdpLoop3.UpdateState(PORT_LOOP3 != 0);
 	gdpLoop4.UpdateState(PORT_LOOP4 != 0);
-#else
+
+	gdpSustainPedal.UpdateState(PORT_SUSTAIN_PEDAL == 0);
+	gdpLoopUndo.UpdateState(PORT_LOOP_UNDO == 0);
+	gdpLoopClear.UpdateState(PORT_LOOP_CLEAR == 0);
+	gdpLoop1Rec.UpdateState(PORT_LOOP1_REC == 0);
+	gdpLoop2Rec.UpdateState(PORT_LOOP2_REC == 0);
+	gdpLoop3Rec.UpdateState(PORT_LOOP3_REC == 0);
+	gdpLoop4Rec.UpdateState(PORT_LOOP4_REC == 0);
+#else // DIRECT_PORT_READ
 	gdpArpSelectUpper.UpdateState(digitalRead(PIN_ARP_SELECT_UPPER));
 	gdpArpSelectLower.UpdateState(digitalRead(PIN_ARP_SELECT_LOWER));
 	gdpArpHold.UpdateState(digitalRead(PIN_ARP_HOLD));
@@ -330,7 +353,15 @@ void ReadAllPins()
 	gdpLoop2.UpdateState(digitalRead(PIN_LOOP2));
 	gdpLoop3.UpdateState(digitalRead(PIN_LOOP3));
 	gdpLoop4.UpdateState(digitalRead(PIN_LOOP4));
-#endif
+
+	gdpSustainPedal.UpdateState(digitalRead(PIN_SUSTAIN_PEDAL));
+	gdpLoopUndo.UpdateState(digitalRead(PIN_LOOP_UNDO));
+	gdpLoopClear.UpdateState(digitalRead(PIN_LOOP_CLEAR));
+	gdpLoop1Rec.UpdateState(digitalRead(PIN_LOOP1_REC));
+	gdpLoop2Rec.UpdateState(digitalRead(PIN_LOOP2_REC));
+	gdpLoop3Rec.UpdateState(digitalRead(PIN_LOOP3_REC));
+	gdpLoop4Rec.UpdateState(digitalRead(PIN_LOOP4_REC));
+#endif // DIRECT_PORT_READ
 
 	// Important values need to be polled every tick
 	gapTempo = analogRead(PINA_TEMPO);
@@ -369,6 +400,13 @@ void DebugDigitalPins()
 	msgBuff[len++] = gdpLoop2.IsActive() ? '1' : '0';
 	msgBuff[len++] = gdpLoop3.IsActive() ? '1' : '0';
 	msgBuff[len++] = gdpLoop4.IsActive() ? '1' : '0';
+	msgBuff[len++] = gdpSustainPedal.IsActive() ? '1' : '0';
+	msgBuff[len++] = gdpLoopClear.IsActive() ? '1' : '0';
+	msgBuff[len++] = gdpLoopUndo.IsActive() ? '1' : '0';
+	msgBuff[len++] = gdpLoop1Rec.IsActive() ? '1' : '0';
+	msgBuff[len++] = gdpLoop2Rec.IsActive() ? '1' : '0';
+	msgBuff[len++] = gdpLoop3Rec.IsActive() ? '1' : '0';
+	msgBuff[len++] = gdpLoop4Rec.IsActive() ? '1' : '0';
 	msgBuff[len++] = '\0';
 	Serial.println(msgBuff);
 }

@@ -25,6 +25,13 @@ extern StableState<16> gdpLoop1;
 extern StableState<16> gdpLoop2;
 extern StableState<16> gdpLoop3;
 extern StableState<16> gdpLoop4;
+extern StableState<16> gdpSustainPedal;
+extern StableState<16> gdpLoopUndo;
+extern StableState<16> gdpLoopClear;
+extern StableState<16> gdpLoop1Rec;
+extern StableState<16> gdpLoop2Rec;
+extern StableState<16> gdpLoop3Rec;
+extern StableState<16> gdpLoop4Rec;
 
 // Global analog pins
 extern uint16_t gapArpGate;

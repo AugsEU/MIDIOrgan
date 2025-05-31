@@ -22,9 +22,6 @@ constexpr uint8_t BP_CMD_NOTE_OFF = 0x80;
 constexpr uint8_t BP_CMD_CLICK_ON = 0xA0;
 constexpr uint8_t BP_CMD_CLICK_OFF = 0x90;
 
-constexpr uint8_t MIDI_CC_MOD_WHEEL = 1;
-constexpr uint8_t MIDI_CC_EXPRESSION = 11;
-
 
 /// ===================================================================================
 /// Globals
@@ -67,6 +64,7 @@ void SetAugSynthParam(const AugSynthPage category, const uint8_t index, const fl
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 void SendMessageToBp();
+void ResetBpSynth();
 void SendParameterToBp(const uint8_t paramNum, const float value);
 
 void ResetPedalForModeChange();
@@ -418,25 +416,18 @@ void SendNoteOff(uint8_t keyNum, uint8_t ch)
 }
 
 
-
-/// @brief Play note on every channel
-void SendNoteOnAllCh(uint8_t noteNum)
-{
-    for(uint8_t ch = 0; ch <= 16; ch++)
-    {
-        SendNoteOn(noteNum, ch);
-    }
-}
-
-
-
 /// @brief Cancel note on every channel
-void SendNoteOffAllCh(uint8_t noteNum)
+void SendNoteOffAllCh()
 {
     for(uint8_t ch = 0; ch <= 16; ch++)
     {
-        SendNoteOff(noteNum, ch);
+        MIDI.sendControlChange(midi::MidiControlChangeNumber::AllNotesOff, 0, ch);
+        MIDI.sendControlChange(midi::MidiControlChangeNumber::AllSoundOff, 0, ch);
+        
     }
+
+    // Mute BP synth
+    ResetBpSynth();
 }
 
 
@@ -569,10 +560,10 @@ void ResetPedalForModeChange()
             SendPedalPitchBend(0);
             break;
         case PM_MODULATION:
-            SendPedalMidiCC(PM_MODULATION, 0);
+            SendPedalMidiCC(midi::MidiControlChangeNumber::ModulationWheel , 0);
             break;
         case PM_VOLUME:
-            SendPedalMidiCC(PM_VOLUME, 127);
+            SendPedalMidiCC(midi::MidiControlChangeNumber::ExpressionController, 127);
             break;
         case PM_INTERNAL:
             if(gpPedalInternalParam)
@@ -625,10 +616,10 @@ void UpdatePedal()
             SendPedalPitchBend(pitchBend);
             break;
         case PM_MODULATION:
-            SendPedalMidiCC(MIDI_CC_MOD_WHEEL, pedal7);
+            SendPedalMidiCC(midi::MidiControlChangeNumber::ExpressionController, pedal7);
             break;
         case PM_VOLUME:
-            SendPedalMidiCC(MIDI_CC_EXPRESSION, pedal7);
+            SendPedalMidiCC(midi::MidiControlChangeNumber::ExpressionController, pedal7);
             break;
         case PM_INTERNAL:
             SendPedalInternal();
@@ -645,17 +636,30 @@ void UpdatePedal()
 /// ===================================================================================
 
 /// @brief Send a message to the BP synth
+void ResetBpSynth()
+{
+    constexpr uint8_t BUFF_SIZE = sizeof(gBpMsgBuff) / sizeof(uint8_t);
+
+    // Writing 0 into the header will reset the bp synth
+    for (uint8_t i = 0; i < BUFF_SIZE+1; i++)
+    {
+        Serial1.write(0);
+    }
+    PollRotaryEncoders();
+}
+
+/// @brief Send a message to the BP synth
 void SendMessageToBp()
 {
-    constexpr uint8_t BUFF_SIZE = sizeof(gBpMsgBuff);
+    constexpr uint8_t BUFF_SIZE = sizeof(gBpMsgBuff) / sizeof(uint8_t);
 
     Serial1.write(BP_CMD_HEADER);
-    delayMicroseconds(100); // let bp interupt finish
     for (uint8_t i = 0; i < BUFF_SIZE; i++)
     {
         Serial1.write(gBpMsgBuff[i]);
-        delayMicroseconds(100); // let bp interupt finish
+        
     }
+    delayMicroseconds(50); // let bp interupt finish
 
     PollRotaryEncoders();
 }

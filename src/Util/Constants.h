@@ -24,6 +24,14 @@ constexpr uint8_t PIN_LOOP2 = 44;
 constexpr uint8_t PIN_LOOP3 = 40;
 constexpr uint8_t PIN_LOOP4 = 43;
 
+constexpr uint8_t PIN_SUSTAIN_PEDAL = 2;
+constexpr uint8_t PIN_LOOP_UNDO = 6;
+constexpr uint8_t PIN_LOOP_CLEAR = 5;
+constexpr uint8_t PIN_LOOP1_REC = 7;
+constexpr uint8_t PIN_LOOP2_REC = 3;
+constexpr uint8_t PIN_LOOP3_REC = 8;
+constexpr uint8_t PIN_LOOP4_REC = 4;
+
 #define PORT_ARP_SELECT_UPPER 	PORT_DPIN_50
 #define PORT_ARP_SELECT_LOWER 	PORT_DPIN_49
 #define PORT_ARP_HOLD 			PORT_DPIN_48
@@ -38,6 +46,14 @@ constexpr uint8_t PIN_LOOP4 = 43;
 #define PORT_LOOP2 				PORT_DPIN_44
 #define PORT_LOOP3 				PORT_DPIN_40
 #define PORT_LOOP4 				PORT_DPIN_43
+
+#define PORT_SUSTAIN_PEDAL 		PORT_DPIN_2
+#define PORT_LOOP_UNDO 			PORT_DPIN_6
+#define PORT_LOOP_CLEAR 		PORT_DPIN_5
+#define PORT_LOOP1_REC 			PORT_DPIN_7
+#define PORT_LOOP2_REC 			PORT_DPIN_3
+#define PORT_LOOP3_REC 			PORT_DPIN_8
+#define PORT_LOOP4_REC 			PORT_DPIN_4
 
 constexpr uint8_t PINA_ARP_GATE = PIN_A15;
 constexpr uint8_t PINA_MIDI_CH_UPPER = PIN_A10;
