@@ -5,6 +5,7 @@
 #include <Input/NotePressInfo.h>
 #include <Input/StableAnalog.h>
 #include <AugSynthParams.h>
+#include <AugSynth.h>
 #include <ScreenDisplay.h>
 
 /// ===================================================================================
@@ -45,6 +46,7 @@ uint8_t gBpMsgBuff[5];
 PedalMode gPedalMode;
 PedalMidiCh gPedalMidiCh;
 PedalInternalParam gPedalInternal;
+AugSynthParam* gpPedalInternalParam;
 
 #if AUG_SYNTH_DEBUG
 AugSynthValueCategory gDebugSynthCat = AugSynthValueCategory::ENV;
@@ -218,7 +220,7 @@ void UpdateMidiOutput()
 #endif // !AUG_SYNTH_DEBUG
 
     // Only want to apply settings while on general info.
-    if (gCurrScreenPage == ScreenPage::SP_GENERAL_INFO)
+    //if (gCurrScreenPage == ScreenPage::SP_GENERAL_INFO)
     {
         PedalMode nextPedalMode = (PedalMode)gPedalModeSelect.mValue;
         PedalMidiCh nextPedalMidiCh = (PedalMidiCh)gPedalMidiChSelect.mValue;
@@ -455,60 +457,104 @@ void CancelAllNotes(bool upper)
 /// Pedal
 /// ===================================================================================
 
-bool SendPedalMidiCC(PedalMode mode, uint8_t value, uint8_t ch)
+/// @brief Send a CC message for the pedal's value
+void SendPedalMidiCC(uint8_t ccMode, uint8_t value)
 {
-    switch (mode)
+    switch (gPedalMidiCh)
     {
-    case PM_MODULATION:
-        MIDI.sendControlChange(MIDI_CC_MOD_WHEEL, value, ch);
-        return true;
-    case PM_VOLUME:
-        MIDI.sendControlChange(MIDI_CC_EXPRESSION, value, ch);
-        return true;
+    case PMC_LOWER:
+        MIDI.sendControlChange(ccMode, value, gLowerCh.mValue);
+        break;
+    case PMC_UPPER:
+        MIDI.sendControlChange(ccMode, value, gUpperCh.mValue);
+        break;
+    case PMC_UPPER_LOWER:
+        MIDI.sendControlChange(ccMode, value, gUpperCh.mValue);
+        MIDI.sendControlChange(ccMode, value, gLowerCh.mValue);
+        break;
     default:
+        uint8_t ch = (gPedalMidiCh + 1) - (PMC_MIDI_CH1);
+        MIDI.sendControlChange(ccMode, value, ch);
         break;
     }
-
-    return false;
 }
 
-/// @brief Send a CC message for the pedal's value
-bool SendPedalMidiCC(PedalMode mode, uint8_t value)
+/// @brief Send a pitch bend message for the pedal's value
+void SendPedalPitchBend(int value)
 {
     switch (gPedalMidiCh)
     {
     case PMC_LOWER:
-        return SendPedalMidiCC(mode, value, gLowerCh.mValue);
+        MIDI.sendPitchBend(value, gLowerCh.mValue);
+        break;
     case PMC_UPPER:
-        return SendPedalMidiCC(mode, value, gUpperCh.mValue);
+        MIDI.sendPitchBend(value, gUpperCh.mValue);
+        break;
     case PMC_UPPER_LOWER:
-        return SendPedalMidiCC(mode, value, gUpperCh.mValue) && SendPedalMidiCC(mode, value, gLowerCh.mValue);
+        MIDI.sendPitchBend(value, gUpperCh.mValue);
+        MIDI.sendPitchBend(value, gLowerCh.mValue);
+        break;
     default:
         uint8_t ch = (gPedalMidiCh + 1) - (PMC_MIDI_CH1);
-        return SendPedalMidiCC(mode, value, ch);
+        MIDI.sendPitchBend(value, ch);
+        break;
     }
 }
 
-bool SendPedalPitchBend(int value, uint8_t ch)
+/// @brief Convert PIP enum to param index
+uint8_t PIPToParamNum(PedalInternalParam pipVal)
 {
-    MIDI.sendPitchBend(value, ch);
-    return true;
+    switch (pipVal)
+    {    
+        case PIP_GAIN:
+            return ASP_GAIN;
+        case PIP_DELAY_TIME:
+            return ASP_DELAY_TIME;
+        case PIP_DCO_VOL_1:
+            return ASP_DCO_VOL_1;
+        case PIP_DCO_VOL_2:
+            return ASP_DCO_VOL_2;
+        case PIP_DCO_TUNE_1:
+            return ASP_DCO_TUNE_1;
+        case PIP_DCO_TUNE_2:
+            return ASP_DCO_TUNE_2;
+        case PIP_DCO_SHAPE_1:
+            return ASP_DCO_WS_1;
+        case PIP_DCO_SHAPE_2:
+            return ASP_DCO_WS_2; 
+        case PIP_CUTOFF:
+            return ASP_VCF_CUTOFF;
+        case PIP_LFO_RATE:
+            return ASP_LFO_RATE;
+        case PIP_LFO_OSC1_FREQ:
+            return ASP_LFO_OSC1_TUNE;
+        case PIP_LFO_OSC2_FREQ:
+            return ASP_LFO_OSC2_TUNE;
+        case PIP_LFO_OSC1_VOL:
+            return ASP_LFO_OSC1_VOLUME;
+        case PIP_LFO_OSC2_VOL:
+            return ASP_LFO_OSC2_VOLUME;
+        default:
+            break;
+    }
+
+    return ASP_GAIN;
 }
 
-bool SendPedalPitchBend(int value)
+void SendPedalInternal()
 {
-    switch (gPedalMidiCh)
+    uint8_t paramIdx = PIPToParamNum(gPedalInternal);
+    gpPedalInternalParam = &gAugSynthParams[paramIdx];
+
+    float pedalValueF = GetPedalStable() * (1.0f / (float)ANALOG_MAX_VALUE);
+    if(paramIdx == ASP_DCO_TUNE_1 || paramIdx == ASP_DCO_TUNE_2)
     {
-    case PMC_LOWER:
-        return SendPedalPitchBend(value, gLowerCh.mValue);
-    case PMC_UPPER:
-        return SendPedalPitchBend(value, gUpperCh.mValue);
-    case PMC_UPPER_LOWER:
-        return SendPedalPitchBend(value, gUpperCh.mValue) && SendPedalPitchBend(value, gLowerCh.mValue);
-    default:
-        uint8_t ch = (gPedalMidiCh + 1) - (PMC_MIDI_CH1);
-        return SendPedalPitchBend(value, ch);
+        pedalValueF -= 0.5f;
+        pedalValueF *= 2.0f;
     }
+
+    pedalValueF = AugSynthParam::ScaleFloat(paramIdx, pedalValueF);
+    SendParameterToBp(paramIdx, pedalValueF);
 }
 
 /// @brief Call this before changing any pedal parameters
@@ -529,12 +575,18 @@ void ResetPedalForModeChange()
             SendPedalMidiCC(PM_VOLUME, 127);
             break;
         case PM_INTERNAL:
-            break; //@TODO Internal synth
+            if(gpPedalInternalParam)
+            {
+                gpPedalInternalParam->SendValueToBpSynth();
+            }
+            gpPedalInternalParam = nullptr;
+            break;
         default:
             break;
     }
 }
 
+/// @brief Is this channel the pedal's channel?
 bool ChannelIsPedal(uint8_t ch)
 {
     if(gPedalMode == PM_OFF || gPedalMode == PM_INTERNAL)
@@ -573,13 +625,14 @@ void UpdatePedal()
             SendPedalPitchBend(pitchBend);
             break;
         case PM_MODULATION:
-            SendPedalMidiCC(PM_MODULATION, pedal7);
+            SendPedalMidiCC(MIDI_CC_MOD_WHEEL, pedal7);
             break;
         case PM_VOLUME:
-            SendPedalMidiCC(PM_VOLUME, pedal7);
+            SendPedalMidiCC(MIDI_CC_EXPRESSION, pedal7);
             break;
         case PM_INTERNAL:
-            break; //@TODO Internal synth
+            SendPedalInternal();
+            break;
         case PM_OFF:
             break;
         default:

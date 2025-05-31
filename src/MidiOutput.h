@@ -49,22 +49,30 @@ enum PedalInternalParam : uint8_t
 {
     PIP_GAIN,
     PIP_DELAY_TIME,
-    PIP_DELAY_FEEDBACK,
     PIP_DCO_VOL_1,
     PIP_DCO_VOL_2,
+    PIP_DCO_TUNE_1,
+    PIP_DCO_TUNE_2,
+    PIP_DCO_SHAPE_1,
+    PIP_DCO_SHAPE_2,
     PIP_CUTOFF,
     PIP_LFO_RATE,
+    PIP_LFO_OSC1_VOL,
+    PIP_LFO_OSC2_VOL,
     PIP_LFO_OSC1_FREQ,
     PIP_LFO_OSC2_FREQ,
 
     NUM_PEDAL_INTERNAL_PARAMS
 };
 
+struct AugSynthParam;
+
 extern NotePressInfo gNoteStates[NUM_NOTES];
 extern AnalogSelector<uint8_t, 17, 0> gUpperCh;
 extern AnalogSelector<uint8_t, 17, 0> gLowerCh;
 extern AnalogSelector<int8_t, 5, -3> gUpperOct;
 extern AnalogSelector<int8_t, 5, 1> gLowerOct;
+extern AugSynthParam* gpPedalInternalParam;
 
 #if AUG_SYNTH_DEBUG
 extern AnalogSelector<uint8_t, 5, 0> gCatSelector;
@@ -93,10 +101,6 @@ uint8_t KeyNumToNote(uint8_t keyNum);
 
 void PlayMetronome();
 
-bool SendPedalMidiCC(PedalMode mode, uint8_t value, uint8_t ch);
-bool SendPedalMidiCC(PedalMode mode, uint8_t value);
-bool SendPedalPitchBend(int value, uint8_t ch);
-bool SendPedalPitchBend(int value);
 bool ChannelIsPedal(uint8_t ch);
 void UpdatePedal();
 

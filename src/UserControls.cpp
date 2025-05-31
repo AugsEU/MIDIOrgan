@@ -143,9 +143,6 @@ void BeginAnalogReadForMux()
 	case 7:
 		BeginAnalogRead(PINA_KNOB7);
 		break;
-	case 8:
-		BeginAnalogRead(PINA_PEDAL);
-		break;
 	default:
 		Serial.println("ANALOG READ ERROR");
 		break;
@@ -154,8 +151,6 @@ void BeginAnalogReadForMux()
 
 void EndAnalogReadForMux()
 {
-	constexpr uint32_t PEDAL_RANGE = PEDAL_MAX - PEDAL_MIN;
-
 	switch (gAnalogReadSection)
 	{
 	case 0:
@@ -182,25 +177,13 @@ void EndAnalogReadForMux()
 	case 7:
 		gapPedalSelect = EndAnalogRead();
 		break;
-	case 8:
-		gStablePedal.ConsumeInput(EndAnalogRead());
-		{
-			gPedalValueCache = gStablePedal.GetStableValue(); // need 32 to avoid overflow
-			gPedalValueCache = min(gPedalValueCache, PEDAL_MAX);
-			gPedalValueCache = max(gPedalValueCache, PEDAL_MIN); // clamp
-
-			gPedalValueCache = PEDAL_MAX - gPedalValueCache; //Invert to because of wiring
-			gPedalValueCache <<= ANALOG_READ_RESOLUTION_BITS;
-			gPedalValueCache /= PEDAL_RANGE;
-		}
-		break;
 	default:
 		Serial.println("ANALOG READ ERROR");
 		break;
 	}
 
 	gAnalogReadSection++;
-	if(gAnalogReadSection > 8)
+	if(gAnalogReadSection > 7)
 	{
 		gAnalogReadSection = 0;
 	}
@@ -314,6 +297,8 @@ void ReadVirtualPins()
 //-- Read all pins
 void ReadAllPins()
 {
+	constexpr uint32_t PEDAL_RANGE = PEDAL_MAX - PEDAL_MIN;
+
 	// Read these every frame to minimise input delay for playing keys.
 	ReadVirtualPins();
 
@@ -347,8 +332,18 @@ void ReadAllPins()
 	gdpLoop4.UpdateState(digitalRead(PIN_LOOP4));
 #endif
 
-	gapMidiChUpper = analogRead(PINA_MIDI_CH_UPPER);
-	gapMidiChLower = analogRead(PINA_MIDI_CH_LOWER);
+	// Important values need to be polled every tick
+	gapTempo = analogRead(PINA_TEMPO);
+	gStablePedal.ConsumeInput(analogRead(PINA_PEDAL));
+	{
+		gPedalValueCache = gStablePedal.GetStableValue(); // need 32 to avoid overflow
+		gPedalValueCache = min(gPedalValueCache, PEDAL_MAX);
+		gPedalValueCache = max(gPedalValueCache, PEDAL_MIN); // clamp
+
+		gPedalValueCache = PEDAL_MAX - gPedalValueCache; //Invert to because of wiring
+		gPedalValueCache <<= ANALOG_READ_RESOLUTION_BITS;
+		gPedalValueCache /= PEDAL_RANGE;
+	}
 }
 
 uint32_t GetPedalStable()

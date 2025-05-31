@@ -70,7 +70,7 @@ void AugSynthParam::ApplyDelta(int8_t delta)
 //     *buff = '0' + static_cast<char>(n % 10);
 // }
 
-float AugSynthParam::GetFloatValue()
+float AugSynthParam::GetNormFloatValue()
 {
     if(mMinValue < 0 && mValue < 0)
     {
@@ -80,27 +80,9 @@ float AugSynthParam::GetFloatValue()
     return (float)mValue / (float)mMaxValue;
 }
 
-void AugSynthParam::SendValueToBpSynth()
-{       
-    uint8_t uv = (uint8_t)mValue;
-    switch (mParamNum)
-    {
-    case ASP_DELAY_MODE: // Int params
-	case ASP_TUNING:
-    case ASP_DCO_WAVE_TYPE_1:
-    case ASP_DCO_WAVE_TYPE_2:
-    case ASP_VCF_MODE:
-    case ASP_LFO_WAVE_TYPE:
-    case ASP_SOUND_TYPE:
-        SendParameterToBp(mParamNum, uv);
-		return;
-    default:
-        break;
-    }
-
-    float fv = GetFloatValue();
-
-    switch (mParamNum)
+float AugSynthParam::ScaleFloat(uint8_t paramNum, float fv)
+{
+    switch (paramNum)
     {
     // General
     case ASP_DRIVE:
@@ -116,21 +98,8 @@ void AugSynthParam::SendValueToBpSynth()
     // DCO
 	case ASP_DCO_TUNE_1:
 	case ASP_DCO_TUNE_2:
-        switch (mValue)
-        {
-        case 46:  fv = 3.0f; break;
-        case 40:  fv = 2.0f; break;
-        case 33:  fv = 1.5f; break;
-        case 30:  fv = 1.3333333333f; break;
-        case -30: fv = 0.75f; break;
-        case -33: fv = 0.6666666666f; break;
-        case -40: fv = 0.5f; break;
-        case -46: fv = 0.33333333333f; break;
-        default:
-            fv = fv * fv * fv;
-            fv = powf(4, fv);
-            break;
-        }
+        fv = fv * fv * fv;
+        fv = powf(4, fv);
 		break;
 	case ASP_DCO_VOL_1:
 	case ASP_DCO_VOL_2:
@@ -192,6 +161,52 @@ void AugSynthParam::SendValueToBpSynth()
         break;
     }
 
+    return fv;
+}
+
+void AugSynthParam::SendValueToBpSynth()
+{       
+    uint8_t uv = (uint8_t)mValue;
+    switch (mParamNum) // Int params
+    {
+    case ASP_DELAY_MODE: 
+	case ASP_TUNING:
+    case ASP_DCO_WAVE_TYPE_1:
+    case ASP_DCO_WAVE_TYPE_2:
+    case ASP_VCF_MODE:
+    case ASP_LFO_WAVE_TYPE:
+    case ASP_SOUND_TYPE:
+        SendParameterToBp(mParamNum, uv);
+		return;
+    default:
+        break;
+    }
+
+    float fv = GetNormFloatValue();
+    switch (mParamNum)
+    {
+    case ASP_DCO_TUNE_1:
+	case ASP_DCO_TUNE_2:
+        switch (mValue)
+        {
+        // Special case: values get rounded to exact ratios for better tuning.
+        case 46:  fv = 3.0f; break;
+        case 40:  fv = 2.0f; break;
+        case 33:  fv = 1.5f; break;
+        case 30:  fv = 1.3333333333f; break;
+        case -30: fv = 0.75f; break;
+        case -33: fv = 0.6666666666f; break;
+        case -40: fv = 0.5f; break;
+        case -46: fv = 0.33333333333f; break;
+        default:
+            fv = ScaleFloat(mParamNum, fv);
+            break;
+        }
+		break;
+    default:
+        fv = ScaleFloat(mParamNum, fv);
+    }
+
     SendParameterToBp(mParamNum, fv);
 }
 
@@ -213,7 +228,7 @@ void AugSynthPageParams::UpdateValues()
     for(uint8_t i = 0; i < NUM_SYNTH_DIALS; i++)
     {
         int8_t delta = gRotaryEncoders[VPIN_DIALS_IDX[i]].ConsumeDelta();
-        if(mParameters[i] != nullptr && delta != 0)
+        if(mParameters[i] != nullptr && delta != 0 && mParameters[i] != gpPedalInternalParam)
         {
             mParameters[i]->ApplyDelta(delta);
             mParameters[i]->SendValueToBpSynth();
@@ -392,7 +407,11 @@ void UpdateAugSynth()
         GetCurrPageParams().UpdateValues();
     }
 
-    gAugSynthParams[gForceIdx++].SendValueToBpSynth();
+    AugSynthParam* pForceParam = &gAugSynthParams[gForceIdx++];
+    if(pForceParam != gpPedalInternalParam)
+    {
+        pForceParam->SendValueToBpSynth();
+    }
     if(gForceIdx >= ASP_NUM_PARAMS)
     {
         gForceIdx = 0;

@@ -58,12 +58,18 @@ const char* const PedalInternalToString(PedalInternalParam param)
             return "Gain";
         case PIP_DELAY_TIME:
             return "Delay Time";
-        case PIP_DELAY_FEEDBACK:
-            return "Delay Feedback";
         case PIP_DCO_VOL_1:
             return "Osc1 Volume";
         case PIP_DCO_VOL_2:
             return "Osc2 Volume";
+        case PIP_DCO_TUNE_1:
+            return "Osc1 Tune";
+        case PIP_DCO_TUNE_2:
+            return "Osc2 Tune";
+        case PIP_DCO_SHAPE_1:
+            return "Osc1 Shape";
+        case PIP_DCO_SHAPE_2:
+            return "Osc2 Shape"; 
         case PIP_CUTOFF:
             return "Filter Freq";
         case PIP_LFO_RATE:
@@ -72,6 +78,10 @@ const char* const PedalInternalToString(PedalInternalParam param)
             return "LFO Osc1 Freq";
         case PIP_LFO_OSC2_FREQ:
             return "LFO Osc2 Freq";
+        case PIP_LFO_OSC1_VOL:
+            return "LFO Osc1 Vol";
+        case PIP_LFO_OSC2_VOL:
+            return "LFO Osc2 Vol";
         default:
             break;
     }

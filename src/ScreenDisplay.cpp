@@ -536,7 +536,7 @@ void WritePedalInfo()
         }
     }
 
-    ReturnToScreenAfterTime(ScreenPage::SP_GENERAL_INFO, 2000);
+    ReturnToScreenAfterTime(ScreenPage::SP_GENERAL_INFO, 3000);
 }
 
 /// ===================================================================================
@@ -660,5 +660,12 @@ void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param)
     }
 
     WriteString(x, y, paramName, 4);
-    WriteNumber(x + numberOffset, y, param->mValue, 2, true);
+    if(gpPedalInternalParam == param)
+    {
+        WriteString(x + numberOffset, y, "--", 2);
+    }
+    else
+    {
+        WriteNumber(x + numberOffset, y, param->mValue, 2, true);
+    }
 }

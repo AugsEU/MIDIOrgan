@@ -1,7 +1,7 @@
 #include <Input/StableAnalog.h>
 #include <UserControls.h>
 
-constexpr uint32_t ALPHA = 16; // Smoothing factor
+constexpr uint32_t ALPHA = 64; // Smoothing factor
 
 void StableAnalog::ConsumeInput(uint16_t analog) 
 {
