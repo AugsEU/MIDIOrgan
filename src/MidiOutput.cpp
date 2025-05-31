@@ -240,6 +240,7 @@ void UpdateMidiOutput()
 /// @brief Play keys like a regular piano.
 void PlayNotesDirect(uint8_t keyStart, uint8_t keyEnd)
 {
+    bool sustain = gdpSustainPedal.IsActive();
 	for (uint8_t keyNum = keyStart; keyNum < keyEnd; keyNum++)
 	{
 		uint8_t vPinIdx = KeyNumToVirtualPin(keyNum);
@@ -247,20 +248,25 @@ void PlayNotesDirect(uint8_t keyStart, uint8_t keyEnd)
 		
         NotePressInfo* pPressInfo = &gNoteStates[keyNum];
         
-		bool prevPressed = pPressInfo->mPressed;
-		pPressInfo->ChangeState(vPinState, gTime);
-		bool pressed = pPressInfo->mPressed;
+		NotePressState prevState = pPressInfo->mState;
+		pPressInfo->ChangeState(vPinState, gTime, sustain);
+		NotePressState currState = pPressInfo->mState;
 
-		if (pressed)
+		if (currState == NPS_PRESSED)
 		{
-			if (!prevPressed)
+			if (prevState == NPS_OFF)
 			{
 				SendNoteOn(keyNum);
 			}
+            else if(prevState == NPS_SUSTAINED)
+            {
+                SendNoteOff(keyNum);
+                SendNoteOn(keyNum);
+            }
 		}
-		else
+		else if(currState == NPS_OFF)
 		{
-			if (prevPressed)
+			if (prevState == NPS_PRESSED || prevState == NPS_SUSTAINED)
 			{
 				SendNoteOff(keyNum);
 			}

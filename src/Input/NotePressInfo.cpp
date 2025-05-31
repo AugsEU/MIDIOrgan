@@ -1,4 +1,5 @@
 #include <Input/NotePressInfo.h>
+#include <UserControls.h>
 
 /// ===================================================================================
 /// Constants
@@ -12,14 +13,14 @@ constexpr int NOTE_ON_DELAY_TIME_MS = 10;
 /// ===================================================================================
 
 //-- Change state of note
-void NotePressInfo::ChangeState(bool inputPin, uTimeMs time)
+void NotePressInfo::ChangeState(bool inputPin, uTimeMs time, bool sustain = false)
 {
     if (time < mUpdatedTime)
     {
         mUpdatedTime = time; // Handle overflow.
     }
 
-    if (inputPin == mPressed)
+    if (inputPin == mState)
     {
         // Nothing to do here.
         return;
@@ -29,7 +30,7 @@ void NotePressInfo::ChangeState(bool inputPin, uTimeMs time)
     {
         if (time - mUpdatedTime > NOTE_OFF_DELAY_TIME_MS)
         {
-            mPressed = inputPin;
+            mState = sustain ? NPS_SUSTAINED : NPS_OFF;
             mUpdatedTime = time;
         }
     }
@@ -37,7 +38,7 @@ void NotePressInfo::ChangeState(bool inputPin, uTimeMs time)
     {
         if (time - mUpdatedTime > NOTE_ON_DELAY_TIME_MS)
         {
-            mPressed = inputPin;
+            mState = NPS_PRESSED;
             mUpdatedTime = time;
         }
     }

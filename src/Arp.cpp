@@ -122,7 +122,7 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 		NotePressInfo* pNoteInfo = &gNoteStates[keyNum];
 		pNoteInfo->ChangeState(vPinState, gTime);
 		
-		bool pressed = pNoteInfo->mPressed;
+		bool pressed = pNoteInfo->mState;
 
 		if (pressed)
 		{
