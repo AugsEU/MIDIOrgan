@@ -91,6 +91,7 @@ void AugSynthParam::SendValueToBpSynth()
     case ASP_DCO_WAVE_TYPE_2:
     case ASP_VCF_MODE:
     case ASP_LFO_WAVE_TYPE:
+    case ASP_SOUND_TYPE:
         SendParameterToBp(mParamNum, uv);
 		return;
     default:
@@ -102,10 +103,10 @@ void AugSynthParam::SendValueToBpSynth()
     switch (mParamNum)
     {
     // General
+    case ASP_DRIVE:
 	case ASP_GAIN: // 0 to 1
         fv *= fv;
 		break;
-    case ASP_DRIVE:
 	case ASP_DELAY_TIME: // 0 to 1 
     case ASP_DELAY_FEEDBACK:
     case ASP_DELAY_SHEAR:
@@ -155,8 +156,8 @@ void AugSynthParam::SendValueToBpSynth()
 		break;
 
     // VCF
-	case ASP_VCF_CUTOFF: // x*x*x
-        fv = fv * fv * fv;
+	case ASP_VCF_CUTOFF: // x*x
+        fv = fv * fv;
 		break;
 	case ASP_VCF_RES: // 0 to 1 weight high values
     case ASP_VCF_FOLLOW:
@@ -166,9 +167,9 @@ void AugSynthParam::SendValueToBpSynth()
 		break;
 
     // LFO
-	case ASP_LFO_RATE: // (x*x*35+0.1)*SAMPLE_PERIOD 
+	case ASP_LFO_RATE: // (x*x*50+0.1)*SAMPLE_PERIOD 
         fv *= fv;
-        fv *= 35.0f;
+        fv *= 50.0f;
         fv += 0.1f;
         fv *= (1.0f / (float)SAMPLE_RATE);
 		break;
@@ -249,7 +250,7 @@ void BindSynthPages()
 
     // General
     BIND_SCREEN(0, ASP_GENERAL, &gAugSynthParams[ASP_GAIN],                 &gAugSynthParams[ASP_TUNING],
-                                &gAugSynthParams[ASP_DRIVE],                nullptr);
+                                &gAugSynthParams[ASP_DRIVE],                &gAugSynthParams[ASP_SOUND_TYPE]);
 
     // Osc1
     BIND_SCREEN(1, ASP_OSC1,    &gAugSynthParams[ASP_DCO_WAVE_TYPE_1],      &gAugSynthParams[ASP_DCO_VOL_1],
@@ -297,6 +298,7 @@ void InitSynthPatch()
     gAugSynthParams[ASP_DELAY_FEEDBACK     ] = AugSynthParam(ASP_DELAY_FEEDBACK     , 0,  0,   50);
     gAugSynthParams[ASP_DELAY_SHEAR        ] = AugSynthParam(ASP_DELAY_SHEAR        , 0,  0,   50);
     gAugSynthParams[ASP_DELAY_MODE         ] = AugSynthParam(ASP_DELAY_MODE         , 0,  0,   NUM_DELAY_MODES-1);
+    gAugSynthParams[ASP_SOUND_TYPE         ] = AugSynthParam(ASP_SOUND_TYPE         , 0,  0,   NUM_SOUNT_TYPES-1);
  
     // DCO 
     gAugSynthParams[ASP_DCO_WAVE_TYPE_1    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_1    , 0,  0,   NUM_OSC_MODES-1);

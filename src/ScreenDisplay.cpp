@@ -633,6 +633,9 @@ void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param)
         case ASP_DELAY_MODE:
             WriteString(x, y, DelayModeToString(param->mValue), 7);
             return;
+        case ASP_SOUND_TYPE:
+            WriteString(x, y, SoundTypeToString(param->mValue), 7);
+            return;
         case ASP_DCO_WAVE_TYPE_1:
         case ASP_DCO_WAVE_TYPE_2:
         case ASP_LFO_WAVE_TYPE:

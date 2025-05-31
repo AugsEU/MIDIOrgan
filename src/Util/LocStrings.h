@@ -18,6 +18,9 @@ const char* const TuningToString(uint8_t tuning);
 /// @brief Convert delay mode to string (max 7 len)
 const char* const DelayModeToString(uint8_t delay);
 
+/// @brief Convert delay mode to string (max 7 len)
+const char* const SoundTypeToString(uint8_t st);
+
 /// @brief Convert osc mode to string (max 7 len)
 const char* const OscModeToString(uint8_t osc);
 

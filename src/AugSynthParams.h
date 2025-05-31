@@ -5,6 +5,7 @@
 #define ASP_TUNING              0 // Int param
 #define ASP_DRIVE               1 // 1.0f + gParameters[ASP_DRIVE] * (DRIVE_ALPHA-1.0f);
 #define ASP_GAIN                2 // (2.0f / (float_t)MIDI_POLYPHONY) * gParameters[ASP_GAIN];
+#define ASP_SOUND_TYPE          39 // Int param
 
 // Delay
 #define ASP_DELAY_TIME          3 // gParameters[ASP_DELAY_TIME] * DELAY_BUFFER_LEN
@@ -52,7 +53,14 @@
 #define ASP_LFO_VCF_CUTOFF      37 // -0.5 to 0.5
 #define ASP_LFO_VCF_RES         38 // -0.5 to 0.5
 
-#define ASP_NUM_PARAMS          39
+#define ASP_NUM_PARAMS          40
+
+// Sound types
+#define SOUND_TYPE_POLY         0
+#define SOUND_TYPE_MONO         1
+#define SOUND_TYPE_PIANO        2
+#define SOUND_TYPE_BASS         3
+#define NUM_SOUNT_TYPES         4
 
 // Delay modes
 #define DELAY_MODE_OFF          0

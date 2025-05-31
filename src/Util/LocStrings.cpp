@@ -143,6 +143,26 @@ const char* const DelayModeToString(uint8_t delay)
     return "ERROR";
 }
 
+/// @brief Convert delay mode to string (max 7 len)
+const char* const SoundTypeToString(uint8_t st)
+{
+    switch (st)
+    {
+    case SOUND_TYPE_POLY:
+        return "Poly";
+    case SOUND_TYPE_MONO:
+        return "Mono";
+    case SOUND_TYPE_PIANO:
+        return "Pluck";
+    case SOUND_TYPE_BASS:
+        return "Bass";
+    default:
+        break;
+    }
+
+    return "ERROR";
+}
+
 /// @brief Convert osc mode to string 
 const char* const OscModeToString(uint8_t osc)
 {

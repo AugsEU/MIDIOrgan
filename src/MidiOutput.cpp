@@ -18,7 +18,8 @@ constexpr uint8_t DEFAULT_PLAY_VELOCITY = 100;
 constexpr uint8_t BP_CMD_HEADER = 0xFF;
 constexpr uint8_t BP_CMD_NOTE_ON = 0xC0;
 constexpr uint8_t BP_CMD_NOTE_OFF = 0x80;
-constexpr uint8_t BP_CMD_SET_INT_PARAM = 0xA0;
+constexpr uint8_t BP_CMD_CLICK_ON = 0xA0;
+constexpr uint8_t BP_CMD_CLICK_OFF = 0x90;
 
 constexpr uint8_t MIDI_CC_MOD_WHEEL = 1;
 constexpr uint8_t MIDI_CC_EXPRESSION = 11;
@@ -284,13 +285,15 @@ void PlayMetronome()
 
     if (noteOff && gPlayingMetronomeNote > 0)
     {
-        SendNoteOffAllCh(note);
+        gBpMsgBuff[0] = BP_CMD_CLICK_OFF;
+        SendMessageToBp();
         gPlayingMetronomeNote = 0;
     }
 
     if (gdpMetronome.IsActive() && noteOn)
     {
-        SendNoteOnAllCh(note);
+        gBpMsgBuff[0] = BP_CMD_CLICK_ON;
+        SendMessageToBp();
         gPlayingMetronomeNote = note;
     }
 }
