@@ -30,6 +30,7 @@ struct Arpeggiator
     uint8_t mPlayingKey = NOTE_NONE;
     bool mGoingUp;
     uTimeMs mLastNoteTime = 0;
+    uTimeMs mPressNoteTime = 0;
 
     void PlayNotes(uint8_t keyStart, uint8_t keyEnd);
     void ResetState();

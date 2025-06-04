@@ -60,7 +60,7 @@
 #define SOUND_TYPE_MONO         1
 #define SOUND_TYPE_PIANO        2
 #define SOUND_TYPE_BASS         3
-#define NUM_SOUNT_TYPES         4
+#define NUM_SOUND_TYPES         4
 
 // Delay modes
 #define DELAY_MODE_OFF          0

@@ -313,7 +313,7 @@ void InitSynthPatch()
     gAugSynthParams[ASP_DELAY_FEEDBACK     ] = AugSynthParam(ASP_DELAY_FEEDBACK     , 0,  0,   50);
     gAugSynthParams[ASP_DELAY_SHEAR        ] = AugSynthParam(ASP_DELAY_SHEAR        , 0,  0,   50);
     gAugSynthParams[ASP_DELAY_MODE         ] = AugSynthParam(ASP_DELAY_MODE         , 0,  0,   NUM_DELAY_MODES-1);
-    gAugSynthParams[ASP_SOUND_TYPE         ] = AugSynthParam(ASP_SOUND_TYPE         , 0,  0,   NUM_SOUNT_TYPES-1);
+    gAugSynthParams[ASP_SOUND_TYPE         ] = AugSynthParam(ASP_SOUND_TYPE         , 0,  0,   NUM_SOUND_TYPES-1);
  
     // DCO 
     gAugSynthParams[ASP_DCO_WAVE_TYPE_1    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_1    , 0,  0,   NUM_OSC_MODES-1);

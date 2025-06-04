@@ -10,7 +10,7 @@
 /// ===================================================================================
 /// Constants
 /// ===================================================================================
-
+constexpr uTimeMs ARP_HOLD_TOLERANCE = 1000;
 
 /// ===================================================================================
 /// Members
@@ -23,8 +23,8 @@ StableAnalog gArpGate;
 Arpeggiator gLowerArp;
 Arpeggiator gUpperArp;
 
-FixedArray<uint8_t, 8> gPressedNotesAbovePlayed;
-FixedArray<uint8_t, 8> gPressedNotesBelowPlayed;
+FixedArray<uint8_t, 4> gPressedNotesAbovePlayed;
+FixedArray<uint8_t, 4> gPressedNotesBelowPlayed;
 
 /// ===================================================================================
 /// Public functions
@@ -105,6 +105,7 @@ void PlayArp()
 void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 {
 	// First inspect pressed keys.
+	bool hold = gdpArpHold.IsActive();
 	uint8_t numPressed = 0;
 
 	uint8_t highestKey = 0;
@@ -120,9 +121,23 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 		bool vPinState = gVirtualMuxPins[vPinIdx].IsActive();
 
 		NotePressInfo* pNoteInfo = &gNoteStates[keyNum];
-		pNoteInfo->ChangeState(vPinState, gTime);
+		pNoteInfo->ChangeState(vPinState, gTime, false);
 		
-		bool pressed = pNoteInfo->mState;
+		bool pressed = pNoteInfo->mState == NPS_PRESSED;
+
+		if(hold)
+		{
+			uTimeMs currNotePress = pNoteInfo->mPressedTime;
+			if(currNotePress > 1000 && currNotePress > mPressNoteTime)
+			{
+				mPressNoteTime = currNotePress;
+			}
+
+			if(mPressNoteTime - currNotePress < ARP_HOLD_TOLERANCE)
+			{
+				pressed = true;
+			}
+		}
 
 		if (pressed)
 		{
