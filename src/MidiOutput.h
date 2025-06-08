@@ -89,10 +89,12 @@ void PlayNotesDirect(uint8_t keyStart, uint8_t keyEnd);
 void CancelAllNotes(bool upper);
 
 void SendNoteOn(uint8_t keyNum);
-void SendNoteOff(uint8_t keyNum);
-
 void SendNoteOn(uint8_t keyNum, uint8_t ch);
+void SendNoteOnMidi(uint8_t noteNum, uint8_t vel, uint8_t ch);
+
+void SendNoteOff(uint8_t keyNum);
 void SendNoteOff(uint8_t keyNum, uint8_t ch);
+void SendNoteOffMidi(uint8_t noteNum, uint8_t ch);
 
 void SendNoteOffAllCh();
 

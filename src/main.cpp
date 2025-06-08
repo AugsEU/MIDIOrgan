@@ -11,6 +11,7 @@
 #include <ScreenDisplay.h>
 #include <UserControls.h>
 #include <AugSynth.h>
+#include <Looper.h>
 
 #define VPIN_TEST 0
 #define DPIN_TEST 0
@@ -29,6 +30,7 @@ uTimeMs gFirstLoopTime = 0;
 size_t gLoopCount = 0;
 #endif // PROFILING_ENABLED
 
+void TimerOverflowFixup();
 
 /// ===================================================================================
 /// Setup
@@ -38,6 +40,7 @@ size_t gLoopCount = 0;
 void setup() 
 {
 	LcdInit();
+	InitLooper();
 	InitAugSynth();
 
 	// Init pins
@@ -70,10 +73,15 @@ void loop()
 {
 	gPrevTime = gTime;
 	gTime = millis();
+	if(gPrevTime > gTime)
+	{
+		TimerOverflowFixup();
+	}
 
 	ReadAllPins();
 	ReadArpMode();
 	UpdateTempo();
+	UpdateLooper();
 	PollRotaryEncoders();
 	UpdateMidiOutput();
 	PollRotaryEncoders();
@@ -125,4 +133,16 @@ void loop()
 		Serial.println(timeTaken);
 	}
 #endif // PROFILING_ENABLED
+}
+
+void TimerOverflowFixup()
+{
+	for (uint8_t i = 0; i < NUM_NOTES; i++)
+	{
+		gNoteStates[i] = NotePressInfo();
+	}
+	ClearRotaryEncoderDeltas();
+	ArpTimerOverflowFixup();
+	SendNoteOffAllCh();
+	EraseAllLoops();
 }

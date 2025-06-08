@@ -280,13 +280,13 @@ void PlayNotesDirect(uint8_t keyStart, uint8_t keyEnd)
 void PlayMetronome()
 {
     // Tempo messages
-    if (On4Note(48))
+    if (On4Note(24))
     {
         MIDI.sendClock();
     }
 
-    bool noteOn = On4Note(2);
-    bool noteOff = !noteOn && On4Note(16);
+    bool noteOn = On4Note(1);
+    bool noteOff = !noteOn && On4Note(8);
     uint8_t note = METRONOME_NOTE;
 
     if (noteOff && gPlayingMetronomeNote > 0)
@@ -370,23 +370,20 @@ void SendNoteOn(uint8_t keyNum)
 
 
 
-/// @brief Send a keynumber
-void SendNoteOff(uint8_t keyNum)
-{
-    bool isUpper = IsUpperKey(keyNum);
-    uint8_t ch = GetChannel(isUpper);
-
-    SendNoteOff(keyNum, ch);
-}
-
-
-
 /// @brief Send a note on.
 void SendNoteOn(uint8_t keyNum, uint8_t ch)
 {
     uint8_t noteNum = KeyNumToNote(keyNum);
     uint8_t vel = ChannelIsPedal(ch) ? gPedalVelocity : DEFAULT_PLAY_VELOCITY;
 
+    SendNoteOnMidi(noteNum, vel, ch);
+}
+
+
+
+/// @brief Send a note on.
+void SendNoteOnMidi(uint8_t noteNum, uint8_t vel, uint8_t ch)
+{
     if (ch == 0)
     {
         gBpMsgBuff[0] = BP_CMD_NOTE_ON;
@@ -402,24 +399,42 @@ void SendNoteOn(uint8_t keyNum, uint8_t ch)
 
 
 
+/// @brief Send a keynumber
+void SendNoteOff(uint8_t keyNum)
+{
+    bool isUpper = IsUpperKey(keyNum);
+    uint8_t ch = GetChannel(isUpper);
+
+    SendNoteOff(keyNum, ch);
+}
+
+
+
 /// @brief Send a note off.
 void SendNoteOff(uint8_t keyNum, uint8_t ch)
 {
     uint8_t noteNum = KeyNumToNote(keyNum);
-    uint8_t vel = ChannelIsPedal(ch) ? gPedalVelocity : DEFAULT_PLAY_VELOCITY;
+    SendNoteOffMidi(noteNum, ch);
+}
 
+
+
+/// @brief Send a note off.
+void SendNoteOffMidi(uint8_t noteNum, uint8_t ch)
+{
     if (ch == 0)
     {
         gBpMsgBuff[0] = BP_CMD_NOTE_OFF;
         gBpMsgBuff[1] = noteNum;
-        gBpMsgBuff[2] = vel;
+        gBpMsgBuff[2] = 0;
         SendMessageToBp();
     }
     else
     {
-        MIDI.sendNoteOff(noteNum, vel, ch);
+        MIDI.sendNoteOff(noteNum, 0, ch);
     }
 }
+
 
 
 /// @brief Cancel note on every channel
@@ -429,7 +444,6 @@ void SendNoteOffAllCh()
     {
         MIDI.sendControlChange(midi::MidiControlChangeNumber::AllNotesOff, 0, ch);
         MIDI.sendControlChange(midi::MidiControlChangeNumber::AllSoundOff, 0, ch);
-        
     }
 
     // Mute BP synth

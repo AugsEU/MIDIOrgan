@@ -7,17 +7,26 @@ uTimeMs gTempoInterval = 500; // Quarter note interval in milliseconds
 uTimeMs gTempoTicker = 0;
 uint16_t gTempoCache = 120;
 StableAnalog gTempoReading;
+bool gTempoLock = false;
 
 /// @brief Set tempo in bpm
 void SetTempo()
 {
-    gTempoInterval = (1000ul * 120ul) / gTempoCache; // 2 beats
+    if(gTempoLock) return;
+    gTempoInterval = (1000ul * 60ul) / gTempoCache; // 2 beats
+}
+
+/// @brief Lock the tempo from changing.
+void SetTempoLock(bool lock)
+{
+    gTempoLock = lock;
 }
 
 static_assert(ANALOG_MAX_VALUE == 1024, "Need to change function below when changing analog max value");
 /// @brief Calculates tempo from analog values.
 void RecalculateTempo()
 {
+    if(gTempoLock) return;
     uint32_t x = gTempoReading.GetStableValue();
 
     if (x <= 512)
@@ -58,6 +67,7 @@ void UpdateTempo()
 }
 
 
+
 /// @brief Did we just pass a quarter note?
 bool On4Note(uint8_t division)
 {
@@ -68,8 +78,18 @@ bool On4Note(uint8_t division)
     return spedUpTicker < dt * division; 
 }
 
-/// @brief Did we just pass a quarter note?
-bool On3Note(uint8_t division)
+
+
+/// @brief Are we closer to the start of the previous beat than the next?
+bool CloseToBeatStart()
 {
-    return false; // TODO: Do we need this?
+    return gTempoTicker < (gTempoInterval / 2);
+}
+
+
+
+/// @brief Get the ms since the start of the next beat.
+uTimeMs TimeSinceBeat()
+{
+    return gTempoTicker;
 }

@@ -42,5 +42,6 @@ private:
 bool ArpEnabled();
 void ReadArpMode();
 void PlayArp();
+void ArpTimerOverflowFixup();
 
 #endif // ARP_H

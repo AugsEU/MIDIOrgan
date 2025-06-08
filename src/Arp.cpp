@@ -57,16 +57,16 @@ void ReadArpMode()
 	switch (speed)
 	{
 	case ArpSpeed::ARP_SPEED_QUARTER:
-		gArpSpeed = 2;
+		gArpSpeed = 1;
 		break;
 	case ArpSpeed::ARP_SPEED_EIGHTH:
-		gArpSpeed = 4;
+		gArpSpeed = 2;
 		break;
 	case ArpSpeed::ARP_SPEED_TRIPLET:
-		gArpSpeed = 6;
+		gArpSpeed = 3;
 		break;
 	case ArpSpeed::ARP_SPEED_SIXTEENTH:
-		gArpSpeed = 8;
+		gArpSpeed = 4;
 		break;
 	default:
 		break;
@@ -96,6 +96,13 @@ void PlayArp()
 	{
 		PlayNotesDirect(NUM_LOWER_KEYS, NUM_LOWER_KEYS + NUM_UPPER_KEYS);
 	}
+}
+
+
+void ArpTimerOverflowFixup()
+{
+	gLowerArp.ResetState();
+	gUpperArp.ResetState();
 }
 
 /// ===================================================================================
@@ -169,7 +176,7 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 	if (mPlayingKey == NOTE_NONE)
 	{
 		// Do not start arp until on beat.
-		if (!On4Note(2))
+		if (!On4Note(1))
 		{
 			return;
 		}
