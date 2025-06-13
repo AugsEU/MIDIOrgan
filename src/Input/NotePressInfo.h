@@ -13,7 +13,7 @@ enum NotePressState
 struct NotePressInfo
 {
     NotePressState mState = NPS_OFF;
-    uTimeMs mPressedTime = 0;
+    uTimeMs mReleaseTime = 0;
 
     void ChangeState(bool inputPin, unsigned long time, bool sustain = false);
 };

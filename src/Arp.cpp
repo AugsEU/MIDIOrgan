@@ -134,7 +134,7 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 
 		if(hold)
 		{
-			uTimeMs currNotePress = pNoteInfo->mPressedTime;
+			uTimeMs currNotePress = pNoteInfo->mReleaseTime;
 			if(currNotePress > 1000 && currNotePress > mPressNoteTime)
 			{
 				mPressNoteTime = currNotePress;
@@ -205,7 +205,7 @@ void Arpeggiator::PlayNotes(uint8_t keyStart, uint8_t keyEnd)
 
 	if (noteOff)
 	{
-		if (mPlayingKey != NOTE_NONE)
+		if (mPlayingKey != NOTE_NONE && mLastNoteTime != 0)
 		{
 			SendNoteOff(mPlayingKey);
 			mLastNoteTime = 0;// Set to zero to indicate we have sent the note off.

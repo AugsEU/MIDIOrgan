@@ -1,3 +1,4 @@
+#if 1
 /// ===================================================================================
 /// Include
 /// ===================================================================================
@@ -8,14 +9,16 @@
 #include <Util/Globals.h>
 #include <Util/Debug.h>
 #include <MidiOutput.h>
+#include <Util/AugMath.h>
+#include <Util/Utils.h>
 
 /// ===================================================================================
 /// Constants
 /// ===================================================================================
 constexpr uint16_t TIME_BIT_SHIFT = 1; // 0 = 1ms resolution, 1 = 2ms, 3 = 4ms, and so on...
 constexpr uTimeMs MAX_LOOP_TIME = ((1ul << 16ul)-1ul) * (1ul << (uTimeMs)TIME_BIT_SHIFT); // Max time in ms of looper.
-constexpr size_t LOOPER_BYTES = 4096;
-constexpr size_t MAX_PLAYBACKS = 64;
+constexpr size_t LOOPER_BYTES = 2048;
+constexpr size_t MAX_REC_PASSES = 64;
 constexpr uint8_t NOTE_ON_EVENT_SIZE = sizeof(LooperEventNoteOn) * sizeof(uint8_t);
 constexpr uint8_t NOTE_OFF_EVENT_SIZE = sizeof(LooperEventNoteOff) * sizeof(uint8_t);
 
@@ -26,10 +29,11 @@ uint8_t gEventBuff[LOOPER_BYTES]; // huge buffer.
 uint16_t gEventWriteHead = 0;
 uint8_t gNumPendingNoteOffs = 0;
 
-LooperRecordingPass gRecPasses[MAX_PLAYBACKS];
+LooperRecordingPass gRecPasses[MAX_REC_PASSES];
 LooperRecordingPass* gCurrRecPass;
 uint8_t gRecPassesCount = 0;
 
+bool gLoopLengthSet = false;
 uTimeMs gCurrLoopLength = 0;
 uTimeMs gCurrLoopPlayHead = 0;
 
@@ -50,19 +54,27 @@ void InitLooper()
 
 void EraseAllLoops()
 {
+    if(gLoopLengthSet && gEventWriteHead > 0) // Mute if we have notes.
+    {
+        // @TODO more fine grain muting.
+        SendNoteOffAllCh();
+    }
+
     gEventWriteHead = 0;
     gRecPassesCount = 0;
     gCurrLoopLength = 0;
     gNumPendingNoteOffs = 0;
     gCurrRecPass = nullptr;
 
-    for(uint8_t i = 0; i < MAX_PLAYBACKS; i++)
+    gLoopLengthSet = false;
+
+    for(size_t i = 0; i < MAX_REC_PASSES; i++)
     {
         gRecPasses[i] = LooperRecordingPass();
     }
 
     // In theory we don't need this, but just in case.
-    for(uint8_t i = 0; i < LOOPER_BYTES; i++)
+    for(size_t i = 0; i < LOOPER_BYTES; i++)
     {
         gEventBuff[i] = 0;
     }
@@ -85,22 +97,23 @@ bool TryWriteNoteOnEvent(uint8_t note, uint8_t vel, uint8_t ch)
     gEventBuff[gEventWriteHead++] = note | 0x80; // Write leading 1 to indicate this is note on.
     gEventBuff[gEventWriteHead++] = vel;
     gEventBuff[gEventWriteHead++] = ch;
-    *(uint16_t*)(gEventBuff + gEventWriteHead) = time;
-    gEventWriteHead += sizeof(uint16_t) * sizeof(uint8_t);
+    WriteU16ToByteBuff(gEventBuff, gEventWriteHead, time);
+
+    DebugPrint("WNote on:", note);
 
     gNumPendingNoteOffs++;
     return true;
 }
 
 /// @brief Read a note on event from the buffer
-LooperEventNoteOn ReadNoteOnEvent(uint8_t idx)
+LooperEventNoteOn ReadNoteOnEvent(uint16_t idx)
 {
     LooperEventNoteOn ret;
 
     ret.mNote = gEventBuff[idx++] & 0x7F;
     ret.mVelocity = gEventBuff[idx++];
     ret.mCh = gEventBuff[idx++];
-    ret.mTime = *reinterpret_cast<uint16_t*>(gEventBuff + idx);
+    ret.mTime = ReadU16FromByteBuff(gEventBuff, idx);
 
     return ret;
 }
@@ -122,6 +135,8 @@ bool TryWriteNoteOffEvent(uint8_t note, uint8_t ch)
     *(uint16_t*)(gEventBuff + gEventWriteHead) = time;
     gEventWriteHead += sizeof(uint16_t) * sizeof(uint8_t);
 
+    DebugPrint("WNote off:", note);
+
     if(gNumPendingNoteOffs > 0)
     {
         gNumPendingNoteOffs--;
@@ -130,7 +145,7 @@ bool TryWriteNoteOffEvent(uint8_t note, uint8_t ch)
 }
 
 /// @brief Read a note off event from the buffer
-LooperEventNoteOff ReadNoteOffEvent(uint8_t idx)
+LooperEventNoteOff ReadNoteOffEvent(uint16_t idx)
 {
     LooperEventNoteOff ret;
 
@@ -148,21 +163,31 @@ LooperEventNoteOff ReadNoteOffEvent(uint8_t idx)
 /// @brief Start recording in channel.
 void BeginRecordingInChannel(uint8_t ch)
 {
-    if(gRecPassesCount >= MAX_PLAYBACKS)
+    if(gRecPassesCount >= MAX_REC_PASSES)
     {
         return; // No space for pass.
     }
     gRecPassesCount++;
     LooperRecordingPass* pass = GetTopRecordingPass();
-    AG_ASSERT(pass != nullptr, 102);
+    if(pass == nullptr)
+    {
+        AG_ASSERT(pass != nullptr, 102);
+        EraseAllLoops();
+        return;
+    }
 
     pass->mBegin = gEventWriteHead;
     pass->mRecCh = ch;
     pass->mIsActionBegin = true;
     pass->mPlaybackOffset = 0;
 
+    DebugPrint("Begin ch", ch);
     gCurrRecPass = pass;
-    // @TODO Mute all notes
+    
+    for(int i = 0; i < NUM_NOTES; i++)
+    {
+        gNoteStates[i].mState = NPS_OFF;
+    }
 }
 
 /// @brief Need to create a new pass to extend loop.
@@ -180,6 +205,8 @@ void ExtendRecordingInChannel(uint8_t ch)
     pass->mRecCh = ch;
     pass->mIsActionBegin = false;
     pass->mPlaybackOffset = 0;
+
+    gCurrRecPass = pass;
 }
 
 /// @brief Get the current channel we are recording on. Zero means not recording.
@@ -208,7 +235,7 @@ uint8_t GetPedalsRecCh()
 /// @brief Get the "pass" at the top of the stack.
 LooperRecordingPass* GetTopRecordingPass()
 {
-    if (gRecPassesCount == 0 || gRecPassesCount > MAX_PLAYBACKS)
+    if (gRecPassesCount == 0 || gRecPassesCount > MAX_REC_PASSES)
     {
         return nullptr;
     }
@@ -255,43 +282,42 @@ void SendLooperNoteOff(uint8_t note, uint8_t midiCh)
 
 void PlayPassNotes(LooperRecordingPass* pass)
 {
-    if(pass->mPlaybackOffset >= pass->mEnd) // Pass is waiting for wrap around.
-    {
-        return;
-    }
-
     uint16_t time = (uint16_t)gCurrLoopPlayHead >> TIME_BIT_SHIFT;
-    bool cont = true;
-    while(cont)
+    while(true)
     {
-        cont = false;
         uint16_t idx = pass->mBegin + pass->mPlaybackOffset;
+        if(idx >= pass->mEnd || idx >= LOOPER_BYTES)
+        {
+            break;
+        }
+
         if((gEventBuff[idx] & 0x80) != 0) // Note on
         {
             LooperEventNoteOn noteOn = ReadNoteOnEvent(idx);
             if(noteOn.mTime < time)
             {
+                DebugPrint("PNote on:", noteOn.mNote);
                 SendNoteOnMidi(noteOn.mNote, noteOn.mVelocity, noteOn.mCh);
-                cont = true;
+                pass->mPlaybackOffset += NOTE_ON_EVENT_SIZE;
             }
-
-            pass->mPlaybackOffset += NOTE_ON_EVENT_SIZE;
+            else
+            {
+                break;
+            }
         }
         else
         {
             LooperEventNoteOff noteOff = ReadNoteOffEvent(idx);
             if(noteOff.mTime < time)
             {
+                DebugPrint("PNote off:", noteOff.mNote);
                 SendNoteOffMidi(noteOff.mNote, noteOff.mCh);
-                cont = true;
+                pass->mPlaybackOffset += NOTE_OFF_EVENT_SIZE;
             }
-
-            pass->mPlaybackOffset += NOTE_OFF_EVENT_SIZE;
-        }
-
-        if(pass->mPlaybackOffset >= pass->mEnd)
-        {
-            break;
+            else
+            {
+                break;
+            }
         }
     }
 }
@@ -304,7 +330,7 @@ void PlayRecordedNotes()
         LooperRecordingPass* pass = &gRecPasses[i];
         if(pass != gCurrRecPass)
         {
-            PlayPassNotes(&gRecPasses[i]);
+            PlayPassNotes(pass);
         }
     }
 }
@@ -352,76 +378,79 @@ bool ShouldStopRecording()
 /// @brief Called every tick
 void UpdateLooper()
 {
+    if(gdpLoopClear.IsActive())
+    {
+        EraseAllLoops();
+    }
+    
     uTimeMs dt = gTime - gPrevTime;
     uint8_t pressedCh = GetPedalsRecCh();
-    LooperRecordingPass* pass = gCurrRecPass;
 
-    if(gCurrLoopLength == 0)
+    if(gRecPassesCount == 0)
     {
         TryStartRecording(pressedCh);
     }
-
-    if(pass) // Recording a pass
+    else if(gCurrRecPass) // Recording a pass
     {
         bool endRec = ShouldStopRecording();
-        if(gRecPassesCount == 1) // Special case: Recording first pass.
+        if(!gLoopLengthSet) // Special case: Recording first pass.
         {
             gCurrLoopLength += dt;
+            gCurrLoopPlayHead = gCurrLoopLength;
             if(gCurrLoopLength > MAX_LOOP_TIME)
             {
+                // Loop too long. @TODO Properly exit from this condition.
                 EraseAllLoops();
-                SendNoteOffAllCh();
                 return;
             }
 
-            if(endRec)
+            if(pressedCh == 0)
             {
-                gCurrLoopLength += gTempoInterval - (gCurrLoopLength % gTempoInterval); // Round to nearest bpm.
+                gCurrLoopLength = RoundToNearestMultiple(gCurrLoopLength, gTempoInterval); // Round to nearest bpm.
+                if(gCurrLoopLength < gTempoInterval * 2)
+                {
+                    EraseAllLoops();
+                    return;
+                }
                 AG_ASSERT(gCurrLoopLength % gTempoInterval == 0, 101);
-                gCurrLoopPlayHead = 0; // @TODO think about this creating a small offset.
-                pass = nullptr;
-                gCurrRecPass = nullptr;
+                gCurrLoopPlayHead = TimeSinceBeat(); // @TODO think about this creating a small offset.
+                gLoopLengthSet = true;
             }
         }
-        else // All other passes
+
+        if(endRec)
         {
-            if(endRec)
-            {
-                // @TODO Do something to end the pass?
-                pass = nullptr;
-                gCurrRecPass = nullptr;
-            }
+            // @TODO Do something to end the pass?
+            DebugPrint("End rec", gCurrLoopLength);
+            gCurrRecPass = nullptr;
         }
     }
     else if(pressedCh != 0)
     {
         BeginRecordingInChannel(pressedCh);
-        pass = gCurrRecPass;
-    }
-    else
-    {
-        pass = nullptr;
     }
 
-    if(gCurrLoopLength > 0)
+
+    if(gLoopLengthSet)
     {
         gCurrLoopPlayHead += dt;
         if(gCurrLoopPlayHead >= gCurrLoopLength) // Wrap around.
         {
             gCurrLoopPlayHead -= gCurrLoopLength;
-            if(pass) // Pass is only non-null if we are recording.
+            if(gCurrRecPass) // Pass is only non-null if we are recording.
             {
-                ExtendRecordingInChannel(pass->mRecCh);
+                ExtendRecordingInChannel(gCurrRecPass->mRecCh);
             }
             for(uint8_t i = 0; i < gRecPassesCount; i++)
             {
                 gRecPasses[i].mPlaybackOffset = 0;
             }
         }
+
+        PlayRecordedNotes();
     }
 
-    PlayRecordedNotes();
-
     // Lock tempo when looping.
-    SetTempoLock(gCurrLoopLength > 0);
+    SetTempoLock(gRecPassesCount > 0);
 }
+#endif // LOOPER

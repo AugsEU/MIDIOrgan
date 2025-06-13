@@ -7,6 +7,7 @@
 #include <AugSynthParams.h>
 #include <AugSynth.h>
 #include <ScreenDisplay.h>
+#include <Looper.h>
 
 /// ===================================================================================
 /// Constants
@@ -376,6 +377,7 @@ void SendNoteOn(uint8_t keyNum, uint8_t ch)
     uint8_t noteNum = KeyNumToNote(keyNum);
     uint8_t vel = ChannelIsPedal(ch) ? gPedalVelocity : DEFAULT_PLAY_VELOCITY;
 
+    SendLooperNoteOn(noteNum, vel, ch);
     SendNoteOnMidi(noteNum, vel, ch);
 }
 
@@ -414,6 +416,8 @@ void SendNoteOff(uint8_t keyNum)
 void SendNoteOff(uint8_t keyNum, uint8_t ch)
 {
     uint8_t noteNum = KeyNumToNote(keyNum);
+
+    SendLooperNoteOff(noteNum, ch);
     SendNoteOffMidi(noteNum, ch);
 }
 

@@ -77,7 +77,7 @@ void loop()
 	{
 		TimerOverflowFixup();
 	}
-
+    
 	ReadAllPins();
 	ReadArpMode();
 	UpdateTempo();

@@ -8,21 +8,20 @@
 //-- Change state of note
 void NotePressInfo::ChangeState(bool inputPin, uTimeMs time, bool sustain)
 {
-    if (time < mPressedTime)
-    {
-        //mPressedTime = time; // Handle overflow.
-    }
-
     if(inputPin) // Note on.
     {
         if(mState != NPS_PRESSED)
         {
             mState = NPS_PRESSED;
-            mPressedTime = time;
+            mReleaseTime = time;
         }
     }
     else // Note off.
     {
+        if(mState == NPS_PRESSED)
+        {
+            mReleaseTime = time;
+        }
         mState = sustain ? NPS_SUSTAINED : NPS_OFF;
     }
 }

@@ -1,9 +1,10 @@
+#if 1
 #include <Arduino.h>
 
 #ifndef LOOPER_H
 #define LOOPER_H
 
-struct __attribute__((packed)) LooperEventNoteOn
+struct LooperEventNoteOn
 {
     uint8_t mNote;
     uint8_t mVelocity;
@@ -11,20 +12,20 @@ struct __attribute__((packed)) LooperEventNoteOn
     uint16_t mTime;
 };
 
-struct __attribute__((packed)) LooperEventNoteOff
+struct LooperEventNoteOff
 {
     uint8_t mNote;
     uint8_t mCh;
     uint16_t mTime;
 };
 
-struct __attribute__((packed)) LooperRecordingPass
+struct LooperRecordingPass // __attribute__((packed))
 {
     uint16_t mBegin;
     uint16_t mEnd;
     uint16_t mPlaybackOffset;
-    bool mIsActionBegin : 1;
-    uint8_t mRecCh : 7;
+    bool mIsActionBegin;
+    uint8_t mRecCh;
 
     LooperRecordingPass() : 
         mBegin(0),
@@ -43,7 +44,7 @@ uint8_t GetPedalsRecCh();
 void SendLooperNoteOn(uint8_t note, uint8_t vel, uint8_t midiCh);
 void SendLooperNoteOff(uint8_t note, uint8_t midiCh);
 
-void TryStartRecording();
 void UpdateLooper();
 
 #endif // LOOPER_H
+#endif // LOOPER
