@@ -40,7 +40,9 @@ void TimerOverflowFixup();
 void setup() 
 {
 	LcdInit();
+#if LOOPER
 	InitLooper();
+#endif // LOOPER
 	InitAugSynth();
 
 	// Init pins
@@ -81,7 +83,9 @@ void loop()
 	ReadAllPins();
 	ReadArpMode();
 	UpdateTempo();
+#if LOOPER
 	UpdateLooper();
+#endif // LOOPER
 	PollRotaryEncoders();
 	UpdateMidiOutput();
 	PollRotaryEncoders();
@@ -144,5 +148,7 @@ void TimerOverflowFixup()
 	ClearRotaryEncoderDeltas();
 	ArpTimerOverflowFixup();
 	SendNoteOffAllCh();
+#if LOOPER
 	EraseAllLoops();
+#endif //LOOPER
 }

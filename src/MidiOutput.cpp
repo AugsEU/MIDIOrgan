@@ -377,7 +377,9 @@ void SendNoteOn(uint8_t keyNum, uint8_t ch)
     uint8_t noteNum = KeyNumToNote(keyNum);
     uint8_t vel = ChannelIsPedal(ch) ? gPedalVelocity : DEFAULT_PLAY_VELOCITY;
 
+#if LOOPER
     SendLooperNoteOn(noteNum, vel, ch);
+#endif // LOOPER
     SendNoteOnMidi(noteNum, vel, ch);
 }
 
@@ -417,7 +419,9 @@ void SendNoteOff(uint8_t keyNum, uint8_t ch)
 {
     uint8_t noteNum = KeyNumToNote(keyNum);
 
+#if LOOPER
     SendLooperNoteOff(noteNum, ch);
+#endif // LOOPER
     SendNoteOffMidi(noteNum, ch);
 }
 

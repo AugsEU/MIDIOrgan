@@ -6,6 +6,7 @@
 #include <MidiOutput.h>
 #include <AugSynth.h>
 #include <Util/LocStrings.h>
+#include <Sequencer.h>
 
 struct CharmapInfo
 {
@@ -88,6 +89,8 @@ uint8_t gLoadedCharmaps[MAX_CHAR_STORAGE];
 ScreenPage gCurrScreenPage;
 uTimeMs gPageChangeTime;
 
+uint8_t gCursorStateCache = 0; // Setting cursor takes a long time. We store this so we only set it when necessary. low 7-bits: cursor index, high bit: cursor enabled.
+
 /// ===================================================================================
 /// Private functions
 /// ===================================================================================
@@ -108,6 +111,8 @@ void EnterSynthEdit();
 void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param);
 void WriteSynthEdit();
 
+void EnterSeqEdit();
+void WriteSeqEdit();
 
 /// ===================================================================================
 /// Init
@@ -118,6 +123,9 @@ void LcdInit()
 {
     gLcd.init();
     gLcd.backlight();
+    gLcd.blink_on();
+    gLcd.cursor_off();
+    gLcd.setCursor(0,0);
     for(uint8_t i = 0; i < MAX_CHAR_STORAGE; i++)
     {
         gLoadedCharmaps[i] = 0xFF;
@@ -135,6 +143,35 @@ void LcdInit()
     EnterGeneralInfo();
     gPageChangeTime = gTime;
     gCurrScreenPage = ScreenPage::SP_GENERAL_INFO;
+}
+
+
+/// @brief Turn blinky cursor on or off
+void EnableScreenCursor(bool cursor)
+{
+    bool cursorAlreadyOn = (gCursorStateCache & 0x80) != 0;
+    if(cursor && !cursorAlreadyOn)
+    {
+        gLcd.cursor_on();
+        gCursorStateCache |= 0x80;
+    }
+    else if(!cursor && cursorAlreadyOn)
+    {
+        gLcd.cursor_off();
+        gCursorStateCache &= 0x7F;
+    }
+}
+
+/// @brief Position cursor
+void PlaceScreenCursor(uint8_t x, uint8_t y)
+{
+    uint8_t currIdx = gCursorStateCache & 0x7F;
+    uint8_t newIdx = y*SCREEN_WIDTH * x;
+    if(currIdx != newIdx)
+    {
+        gCursorStateCache = (gCursorStateCache & 0x80) | (newIdx);
+        gLcd.setCursor(x, y);
+    }
 }
 
 /// ===================================================================================
@@ -158,6 +195,9 @@ void SetScreenPage(ScreenPage page)
             break;
         case SP_AUG_SYNTH_EDIT:
             EnterSynthEdit();
+            break;
+        case SP_SEQUENCER_EDIT:
+            EnterSeqEdit();
             break;
         }
     }
@@ -186,8 +226,11 @@ void UpdateScreen()
     case ScreenPage::SP_PEDAL_INFO:
         WritePedalInfo();
         break;
-    case SP_AUG_SYNTH_EDIT:
+    case ScreenPage::SP_AUG_SYNTH_EDIT:
         WriteSynthEdit();
+        break;
+    case ScreenPage::SP_SEQUENCER_EDIT:
+        WriteSeqEdit();
         break;
     default:
         break;
@@ -408,10 +451,11 @@ void WriteNumber(uint8_t x, uint8_t y, T value, uint8_t maxDigits, bool spaceNeg
 }
 
 /// @brief Write a string at a position with whitespace
-void WriteString(uint8_t x, uint8_t y, const char* buffer, uint8_t len)
+void WriteString(uint8_t x, uint8_t y, const char* const buffer, uint8_t len)
 {
     // Handle negative numbers
     uint8_t idx = y * SCREEN_WIDTH + x;
+    const char* readPtr = buffer;
     char* writePtr = gDesiredChars + idx;
     char* writeEnd = writePtr + len;
     char* safetyEnd = gDesiredChars + NUM_SCREEN_CHARS;
@@ -422,20 +466,26 @@ void WriteString(uint8_t x, uint8_t y, const char* buffer, uint8_t len)
 
     while (writePtr < writeEnd)
     {
-        char toWrite = *buffer;
+        char toWrite = *readPtr;
         if(toWrite == '\0')
         {
             break;
         }
 
         *writePtr++ = toWrite;
-        buffer++;
+        readPtr++;
     }
 
     while(writePtr < writeEnd)
     {
         *writePtr++ = ' ';
     }
+}
+
+/// @brief Write a single character to the screen.
+void WriteChar(uint8_t x, uint8_t y, char c)
+{
+    gDesiredChars[y*SCREEN_WIDTH + x] = c;
 }
 
 
@@ -667,5 +717,65 @@ void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param)
     else
     {
         WriteNumber(x + numberOffset, y, param->mValue, 2, true);
+    }
+}
+
+/// ===================================================================================
+/// Sequencer edit
+/// ===================================================================================
+void EnterSeqEdit()
+{
+    PlaceScreenCursor(0, 0);
+}
+
+void WriteSeqEdit()
+{
+    if(IsOnTrackEditPage())
+    {
+        // Track edit page
+        SequencerTrack* track = GetCurrSequencerTrack();
+        WriteString(0, 0, "Track", 5);
+        WriteNumber(6, 0, GetCurrSequencerTrackIdx()+1, 1);
+
+        WriteString(9, 0, "Divi", 4);
+        WriteNumber(14, 0, track->mSubDiv, 2);
+
+        WriteString(0, 1, "Midi", 4);
+        WriteSpecialChar(4, 1, CID_CHANNEL);
+        WriteNumber(6, 1, track->mMidiCh, 2);
+
+        WriteString(9, 1, "Len", 3);
+        WriteNumber(14, 1, track->mNumSteps, 2);
+    }
+    else
+    {
+        int8_t stepIdx = GetCurrSequencerStepIdx();
+        int8_t page = stepIdx >> 4; //div 16
+        int8_t subPageIdx = stepIdx - (page<<4);
+
+        // Step edit
+        for(uint8_t i = 0; i < 16; i++)
+        {
+            bool mul4 = i % 4 == 0; //Multiples of 4 have a special comma notation
+            SequencerStep* step = GetCurrSequencerStep(i + (page<<4));
+            if(step->mNotes[0]==0)//empty step
+            {
+                WriteChar(i, 0, mul4 ? ',' : '.');
+            }
+            else
+            {
+                WriteChar(i, 0, mul4 ? ';' : ':');
+            }
+        }
+
+        SequencerStep* selStep = GetCurrSequencerStep(stepIdx);
+
+        WriteChar(0, 1, '0'+(char)page);
+        WriteString(1, 1, ") Vel", 6);
+        WriteNumber(7, 1, selStep->mVelocity, 2);
+        WriteString(10, 1, "Len", 4);
+        WriteNumber(14, 1, selStep->mLength, 2);
+
+        PlaceScreenCursor(subPageIdx, 0);
     }
 }

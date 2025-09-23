@@ -1,4 +1,6 @@
-#if 1
+#define LOOPER 0 // Turn looper off because it's broken.
+
+#if LOOPER
 #include <Arduino.h>
 
 #ifndef LOOPER_H
