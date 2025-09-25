@@ -246,15 +246,17 @@ void InitSequencer()
 /// @brief Update all 4 sequencer tracks.
 void UpdateSequencer()
 {
+	gTracks[0].SetPlaying(gdpLoop1.IsActive());
+	gTracks[1].SetPlaying(gdpLoop2.IsActive());
+	gTracks[2].SetPlaying(gdpLoop3.IsActive());
+	gTracks[3].SetPlaying(gdpLoop4.IsActive());
+
 	for(uint8_t i = 0; i < NUM_SEQ_TRACKS; i++)
 	{
 		gTracks[i].UpdateTrack();
 	}
 	
-	gTracks[0].SetPlaying(gdpLoop1.IsActive());
-	gTracks[1].SetPlaying(gdpLoop2.IsActive());
-	gTracks[2].SetPlaying(gdpLoop3.IsActive());
-	gTracks[3].SetPlaying(gdpLoop4.IsActive());
+	
 
 	bool pressed = gVirtualMuxPins[SEQ_VPIN_SEQUENCER_BTN].IsActive();
     gSeqEditBtn.UpdateState(pressed);

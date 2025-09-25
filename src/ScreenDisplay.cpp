@@ -113,6 +113,7 @@ void WriteSynthEdit();
 
 void EnterSeqEdit();
 void WriteSeqEdit();
+void ExitSeqEdit();
 
 /// ===================================================================================
 /// Init
@@ -196,6 +197,15 @@ void SetScreenPage(ScreenPage page)
     gPageChangeTime = gTime;
     if(page != gCurrScreenPage)
     {
+        switch (gCurrScreenPage)
+        {
+        case SP_SEQUENCER_EDIT:
+            ExitSeqEdit();
+            break;
+        default:
+            break;
+        }
+
         switch (page)
         {
         case SP_GENERAL_INFO:
@@ -785,24 +795,30 @@ void WriteSeqEdit()
         }
 
         SequencerStep* selStep = GetCurrSequencerStep(stepIdx);
-
-        for(uint8_t i = 0; i < STEP_POLYPHONY; i++)
-        {
-            if(selStep->mNotes[i] != 0)
-            {
-                WriteChar(i, 1, '!');
-            }
-            else
-            {
-                WriteChar(i, 1, '.');
-            }
-        }
-        // WriteChar(0, 1, '1'+(char)page);
-        // WriteString(1, 1, ") Vel", 6);
-        // WriteNumber(7, 1, selStep->mVelocity, 2);
-        // WriteString(10, 1, "Len", 4);
-        // WriteNumber(14, 1, selStep->mLength, 2);
+        
+        // DEBUG
+        // for(uint8_t i = 0; i < STEP_POLYPHONY; i++)
+        // {
+        //     if(selStep->mNotes[i] != 0)
+        //     {
+        //         WriteChar(i, 1, '!');
+        //     }
+        //     else
+        //     {
+        //         WriteChar(i, 1, '.');
+        //     }
+        // }
+        WriteChar(0, 1, '1'+(char)page);
+        WriteString(1, 1, ") Vel", 6);
+        WriteNumber(7, 1, selStep->mVelocity, 2);
+        WriteString(10, 1, "Len", 4);
+        WriteNumber(14, 1, selStep->GetLength(), 2);
 
         PlaceScreenCursor(subPageIdx, 0);
     }
+}
+
+void ExitSeqEdit()
+{
+    EnableScreenCursor(false);
 }
