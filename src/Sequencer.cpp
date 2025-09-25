@@ -22,7 +22,8 @@ constexpr uint8_t SEQ_TOP_LEFT_DIAL = 1;
 constexpr uint8_t SEQ_TOP_RIGHT_DIAL = 2;
 constexpr uint8_t SEQ_BOT_LEFT_DIAL = 3;
 constexpr uint8_t SEQ_BOT_RIGHT_DIAL = 4;
-constexpr uint8_t SEQ_VPIN_SEQUENCER_BTN = 5;
+constexpr uint8_t SEQ_VPIN_SEQUENCER_BTN = 1;
+constexpr uTimeMs SEQ_MAX_RELEASE_TIME = 300;// 300ms
 
 /// ===================================================================================
 /// Globals
@@ -37,9 +38,63 @@ DigitalButton gSeqEditBtn;
 /// ===================================================================================
 SequencerStep::SequencerStep()
 {
+	ClearNotes();
+	mVelocity = 99;
+	mLength = 1;
+}
+
+/// @brief Clear all notes
+void SequencerStep::ClearNotes()
+{
 	memset(mNotes, 0, STEP_POLYPHONY);
-	mVelocity = 0;
-	mLength = 0;
+	mLength &= 0x7F; // unlock notes
+}
+
+void SequencerStep::AddNote(uint8_t note)
+{
+	if(NotesLocked())
+	{
+		ClearNotes();
+		mNotes[0] = note;
+		return;
+	}
+
+	uint8_t i = 0;
+	while(true)
+	{
+		if(note == mNotes[i] || i == STEP_POLYPHONY)
+		{
+			return;
+		}
+		if(mNotes[i] == 0)
+		{
+			break;
+		}
+		i++;
+	}
+	
+	mNotes[i] = note;
+}
+
+uint8_t SequencerStep::GetLength()
+{
+	return mLength & 0x7F;
+}
+
+void SequencerStep::SetLength(uint8_t len)
+{
+	if(len == 0) len = 1;
+	mLength = (mLength & 0x80) | len;
+}
+
+bool SequencerStep::NotesLocked()
+{
+	return (mLength & 0x80) != 0;
+}
+
+void SequencerStep::LockNotes()
+{
+	mLength |= 0x80;
 }
 
 /// ===================================================================================
@@ -51,8 +106,8 @@ SequencerTrack::SequencerTrack()
 {
 	mPlaying = false;
 	mMidiCh = 0;
-	mSubDiv = 0;
-	mNumSteps = 0;
+	mSubDiv = 1;
+	mNumSteps = 16;
 
 	mPlayHead = 0;
 	EraseAllSteps();
@@ -104,18 +159,6 @@ void SequencerTrack::UpdateTrack()
 {
 	if(On4Note(mSubDiv)) // Step forward.
 	{
-		if(mPlaying) // Play notes and move head forward.
-		{
-			PlayStep(&mSteps[mPlayHead]);
-
-			mPlayHead += 1;
-			if(mPlayHead >= mNumSteps)
-			{
-				// Wrap around.
-				mPlayHead = 0;
-			}
-		}
-
 		// Look for notes to turn off. We always do this so notes aren't left hanging.
 		for(uint8_t note = 0; note < 128; note++)
 		{
@@ -129,6 +172,18 @@ void SequencerTrack::UpdateTrack()
 				}
 
 				WritePlayNoteBuf(note, duration);
+			}
+		}
+
+		if(mPlaying) // Play notes and move head forward.
+		{
+			PlayStep(&mSteps[mPlayHead]);
+
+			mPlayHead += 1;
+			if(mPlayHead >= mNumSteps)
+			{
+				// Wrap around.
+				mPlayHead = 0;
 			}
 		}
 	}
@@ -154,24 +209,30 @@ void SequencerTrack::PlayStep(SequencerStep* step)
 		SendNoteOnMidi(note, step->mVelocity, mMidiCh);
 
 		// Write to buffer to remember when to turn it off.
-		WritePlayNoteBuf(note, step->mLength);
+		WritePlayNoteBuf(note, step->GetLength());
 	}
-	
 }
 
 /// @brief Set the track to be playing or not.
 void SequencerTrack::SetPlaying(bool playing)
 {
-	if(playing != mPlaying)
+	bool isStopping = !playing;
+	bool canStartPlaying = !mPlaying && On4Note(1);
+	if(isStopping || canStartPlaying)
 	{
-		mPlayHead = 0;// Reset playhead when stopping or starting.
+		if(playing != mPlaying)
+		{
+			mPlayHead = 0;// Reset playhead when stopping or starting.
+		}
+		mPlaying = playing;
 	}
-	mPlaying = playing;
 }
 
 /// ===================================================================================
 /// Static functions
 /// ===================================================================================
+void UpdateTrackEdit(SequencerTrack* currTrack);
+void UpdateStepEdit(SequencerTrack* currTrack);
 
 /// @brief Init all 4 sequencer tracks.
 void InitSequencer()
@@ -189,7 +250,7 @@ void UpdateSequencer()
 	{
 		gTracks[i].UpdateTrack();
 	}
-
+	
 	gTracks[0].SetPlaying(gdpLoop1.IsActive());
 	gTracks[1].SetPlaying(gdpLoop2.IsActive());
 	gTracks[2].SetPlaying(gdpLoop3.IsActive());
@@ -212,7 +273,90 @@ void UpdateSequencer()
 
 	if(gCurrScreenPage == ScreenPage::SP_SEQUENCER_EDIT)
 	{
+		SequencerTrack* currTrack = GetCurrSequencerTrack();
 
+		int8_t stepDelta = gRotaryEncoders[SEQ_PAGE_SELECT_DIAL_IDX].ConsumeDelta();
+		gSeqSelectStep += stepDelta;
+
+		// Clamp
+		if(gSeqSelectStep < 0) gSeqSelectStep = 0;
+		else if(gSeqSelectStep >= currTrack->mNumSteps) gSeqSelectStep = currTrack->mNumSteps;
+
+		if(IsOnTrackEditPage())
+		{
+			UpdateTrackEdit(currTrack);
+		}
+		else
+		{
+			UpdateStepEdit(currTrack);
+		}
+	}
+}
+
+
+/// @brief Update the track edit page
+void UpdateTrackEdit(SequencerTrack* currTrack)
+{
+	EnableScreenCursor(false);
+	currTrack->mSubDiv = ApplyDelta(currTrack->mSubDiv, gRotaryEncoders[SEQ_TOP_RIGHT_DIAL].ConsumeDelta(), 16);
+	if(currTrack->mSubDiv == 0)
+	{
+		currTrack->mSubDiv = 1;
+	}
+	currTrack->mMidiCh = ApplyDelta(currTrack->mMidiCh, gRotaryEncoders[SEQ_BOT_LEFT_DIAL].ConsumeDelta(), 16);
+	currTrack->mNumSteps = ApplyDelta(currTrack->mNumSteps, gRotaryEncoders[SEQ_BOT_RIGHT_DIAL].ConsumeDelta(), TRACK_STEP_MAX);
+	if(currTrack->mNumSteps == 0)
+	{
+		currTrack->mNumSteps = 1;
+	}
+	gSeqSelectTrack = ApplyDelta(gSeqSelectTrack, gRotaryEncoders[SEQ_TOP_LEFT_DIAL].ConsumeDelta(), 3);
+}
+
+
+/// @brief Update the step edit page
+void UpdateStepEdit(SequencerTrack* currTrack)
+{
+	int8_t stepIdx = GetCurrSequencerStepIdx();
+    int8_t page = stepIdx >> 4; //div 16
+    int8_t subPageIdx = stepIdx - (page<<4);
+	SequencerStep* step = &currTrack->mSteps[stepIdx];
+
+	EnableScreenCursor(true);
+	PlaceScreenCursor(subPageIdx, 0);
+
+	step->mVelocity = ApplyDelta(step->mVelocity, gRotaryEncoders[SEQ_BOT_LEFT_DIAL].ConsumeDelta(), 99);
+	uint8_t newLen = ApplyDelta(step->GetLength(), gRotaryEncoders[SEQ_BOT_RIGHT_DIAL].ConsumeDelta(), 16);
+	step->SetLength(newLen);
+
+	// Clear notes
+	if(gRotaryEncoders[SEQ_TOP_LEFT_DIAL].ConsumeDelta() != 0 ||
+		gRotaryEncoders[SEQ_TOP_RIGHT_DIAL].ConsumeDelta() != 0 ||
+		gdpLoopClear.IsActive())
+	{
+		step->ClearNotes();
+	}
+
+	// Find notes we are pressing
+	uint8_t numNotesPressed = 0;
+	for(uint8_t key = 0; key < NUM_NOTES; key++)
+	{
+		if(gNoteStates[key].mState == NPS_PRESSED)
+		{
+			uint8_t note = KeyNumToNote(key);
+			step->AddNote(note);
+
+			numNotesPressed++;
+			if(step->mNotes[STEP_POLYPHONY-1] != 0)
+			{
+				break;
+			}
+		}
+	}
+
+	if(numNotesPressed == 0)
+	{
+		// When all notes are released we lock the notes. Next time a note is added it will erase the rest.
+		step->LockNotes();
 	}
 }
 
@@ -233,7 +377,7 @@ SequencerTrack* GetCurrSequencerTrack()
 /// @brief Get the step we are editing
 SequencerStep* GetCurrSequencerStep(int8_t idx)
 {
-	GetCurrSequencerTrack()->mSteps[idx];
+	return &GetCurrSequencerTrack()->mSteps[idx];
 }
 
 

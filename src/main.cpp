@@ -12,6 +12,7 @@
 #include <UserControls.h>
 #include <AugSynth.h>
 #include <Looper.h>
+#include <Sequencer.h>
 
 #define VPIN_TEST 0
 #define DPIN_TEST 0
@@ -19,10 +20,17 @@
 #define PROFILING_ENABLED 0
 
 /// ===================================================================================
+/// Constants
+/// ===================================================================================
+constexpr uint8_t NUM_UPDATE_SECTIONS = 2;
+
+
+/// ===================================================================================
 /// Members
 /// ===================================================================================
 uTimeMs gTime;
 uTimeMs gPrevTime;
+uint8_t gUpdateSection = 0;
 
 #if PROFILING_ENABLED
 constexpr size_t LOOP_PROFILE_LIMIT = 10000;
@@ -43,6 +51,7 @@ void setup()
 #if LOOPER
 	InitLooper();
 #endif // LOOPER
+	InitSequencer();
 	InitAugSynth();
 
 	// Init pins
@@ -82,14 +91,13 @@ void loop()
     
 	ReadAllPins();
 	ReadArpMode();
+
+	// Updated every time
 	UpdateTempo();
-#if LOOPER
-	UpdateLooper();
-#endif // LOOPER
 	PollRotaryEncoders();
 	UpdateMidiOutput();
 	PollRotaryEncoders();
-	UpdateScreen();
+	
 	PollRotaryEncoders();
 	UpdateAugSynth();
 	PollRotaryEncoders();
@@ -104,6 +112,24 @@ void loop()
 	}
 
 	PollRotaryEncoders();
+
+	
+
+	// Updated every one in N
+	if(gUpdateSection == 0)
+	{
+		UpdateScreen();
+	}
+
+	if(gUpdateSection++ == NUM_UPDATE_SECTIONS)
+	{
+		gUpdateSection = 0;
+	}
+#if LOOPER
+	UpdateLooper();
+#endif // LOOPER
+	UpdateSequencer();
+	
 
 #if VPIN_TEST
 	for (uint8_t i = 0; i < NUM_VIRTUAL_MUX_PIN; i++)

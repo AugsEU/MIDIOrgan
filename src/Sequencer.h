@@ -11,9 +11,17 @@ struct SequencerStep
 {
 	uint8_t mNotes[STEP_POLYPHONY];
 	uint8_t mVelocity;
-	uint8_t mLength;
 
 	SequencerStep();
+	void ClearNotes();
+	void AddNote(uint8_t note);
+	uint8_t GetLength();
+	void SetLength(uint8_t len);
+	bool NotesLocked();
+	void LockNotes();
+
+private:
+	uint8_t mLength; // High bit of length is used for note lock to save memory.
 };
 
 struct SequencerTrack

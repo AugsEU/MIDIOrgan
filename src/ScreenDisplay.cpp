@@ -123,8 +123,7 @@ void LcdInit()
 {
     gLcd.init();
     gLcd.backlight();
-    gLcd.blink_on();
-    gLcd.cursor_off();
+    gLcd.blink_off();
     gLcd.setCursor(0,0);
     for(uint8_t i = 0; i < MAX_CHAR_STORAGE; i++)
     {
@@ -153,25 +152,37 @@ void EnableScreenCursor(bool cursor)
     if(cursor && !cursorAlreadyOn)
     {
         gLcd.cursor_on();
-        gCursorStateCache |= 0x80;
+        gLcd.blink_on();
+
+        gCursorStateCache = 0x80;
     }
     else if(!cursor && cursorAlreadyOn)
     {
         gLcd.cursor_off();
-        gCursorStateCache &= 0x7F;
+        gLcd.blink_off();
+        gCursorStateCache = 0x0;
     }
 }
 
 /// @brief Position cursor
 void PlaceScreenCursor(uint8_t x, uint8_t y)
 {
-    uint8_t currIdx = gCursorStateCache & 0x7F;
-    uint8_t newIdx = y*SCREEN_WIDTH * x;
-    if(currIdx != newIdx)
-    {
-        gCursorStateCache = (gCursorStateCache & 0x80) | (newIdx);
-        gLcd.setCursor(x, y);
-    }
+    // For some reason this doesn't work just after the cursor has been enabled
+    // uint8_t currIdx = gCursorStateCache & 0x7F;
+    // uint8_t newIdx = y*SCREEN_WIDTH + x;
+    
+    // if(--currIdx > 32) // HACK: We do this about 100 times before the cursor actually caches
+    // {
+    //     gCursorStateCache = (gCursorStateCache & 0x80) | (currIdx);
+    //     gLcd.setCursor(x, y);
+    // }
+    // else if(currIdx != newIdx)
+    // {
+    //     gCursorStateCache = (gCursorStateCache & 0x80) | (newIdx);
+    //     gLcd.setCursor(x, y);
+    // }
+
+    gLcd.setCursor(x, y);
 }
 
 /// ===================================================================================
@@ -730,10 +741,14 @@ void EnterSeqEdit()
 
 void WriteSeqEdit()
 {
+    ClearLine(0);
+    ClearLine(1);
+
+    SequencerTrack* track = GetCurrSequencerTrack();
+
     if(IsOnTrackEditPage())
     {
         // Track edit page
-        SequencerTrack* track = GetCurrSequencerTrack();
         WriteString(0, 0, "Track", 5);
         WriteNumber(6, 0, GetCurrSequencerTrackIdx()+1, 1);
 
@@ -754,10 +769,11 @@ void WriteSeqEdit()
         int8_t subPageIdx = stepIdx - (page<<4);
 
         // Step edit
-        for(uint8_t i = 0; i < 16; i++)
+        const uint8_t numStepsInPage = track->mNumSteps-(page<<4);
+        for(uint8_t i = 0; i < min(numStepsInPage, 16); i++)
         {
             bool mul4 = i % 4 == 0; //Multiples of 4 have a special comma notation
-            SequencerStep* step = GetCurrSequencerStep(i + (page<<4));
+            SequencerStep* step = &track->mSteps[i + (page<<4)];
             if(step->mNotes[0]==0)//empty step
             {
                 WriteChar(i, 0, mul4 ? ',' : '.');
@@ -770,11 +786,22 @@ void WriteSeqEdit()
 
         SequencerStep* selStep = GetCurrSequencerStep(stepIdx);
 
-        WriteChar(0, 1, '0'+(char)page);
-        WriteString(1, 1, ") Vel", 6);
-        WriteNumber(7, 1, selStep->mVelocity, 2);
-        WriteString(10, 1, "Len", 4);
-        WriteNumber(14, 1, selStep->mLength, 2);
+        for(uint8_t i = 0; i < STEP_POLYPHONY; i++)
+        {
+            if(selStep->mNotes[i] != 0)
+            {
+                WriteChar(i, 1, '!');
+            }
+            else
+            {
+                WriteChar(i, 1, '.');
+            }
+        }
+        // WriteChar(0, 1, '1'+(char)page);
+        // WriteString(1, 1, ") Vel", 6);
+        // WriteNumber(7, 1, selStep->mVelocity, 2);
+        // WriteString(10, 1, "Len", 4);
+        // WriteNumber(14, 1, selStep->mLength, 2);
 
         PlaceScreenCursor(subPageIdx, 0);
     }
