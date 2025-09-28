@@ -3,7 +3,7 @@
 #ifndef SEQUENCER_H
 #define SEQUENCER_H
 
-constexpr uint8_t STEP_POLYPHONY = 8;
+constexpr uint8_t STEP_POLYPHONY = 6;
 constexpr uint8_t TRACK_STEP_MAX = 96;
 constexpr uint8_t NUM_SEQ_TRACKS = 4;
 

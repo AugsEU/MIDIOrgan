@@ -60,8 +60,8 @@ constexpr uint8_t SYNTH_EDIT_BTN = 1;
 constexpr uint8_t SEQ_EDIT_BTN = 0;
 constexpr uint8_t SYNTH_LOAD_BTN = 3;
 constexpr uint8_t SYNTH_SAVE_BTN = 5;
-constexpr uint8_t BACK_BTN = 5;
-constexpr uint8_t SETTINGS_BTN = 6;
+constexpr uint8_t BACK_BTN = 2;
+constexpr uint8_t SETTINGS_BTN = 4;
 
 // Screen templates
 
@@ -105,6 +105,7 @@ uint8_t gCursorStateCache = 0; // Setting cursor takes a long time. We store thi
 uint8_t gSaveWriteCursor = 0;
 uint8_t gSaveLoadSlotNum = 0;
 uint8_t gSaveLoadConfirmer = 0;
+char gSaveNameBuf[8];
 
 /// ===================================================================================
 /// Private functions
@@ -1007,15 +1008,155 @@ void ExitSynthLoad()
 /// ===================================================================================
 void EnterSynthSave()
 {
+    bool zeroSlotExists = SaveSlotExists(0);
 
+    EnableScreenCursor(true);
+    gLcd.blink_off();
+    ClearLine(0);
+    ClearLine(1);
+    gSaveLoadConfirmer = 0;
+    gSaveLoadSlotNum = 0;
+    gSaveWriteCursor = 0;
+    
+    if(zeroSlotExists)
+        LoadUserPresetNameOnly(0);
+    
+    for(uint8_t i = 0; i < PRESET_NUM_CHARS;i++)
+    {
+        gSaveNameBuf[i] = ' ';
+        if(!zeroSlotExists)
+        {
+            gLoadedPreset.mName[i] = ' ';
+        }
+    }
 }
 
 void WriteSynthSave()
 {
+    int8_t slotDelta = gRotaryEncoders[BOT_LEFT_DIAL].ConsumeDelta();
+    slotDelta += gRotaryEncoders[PAGE_SELECT_DIAL].ConsumeDelta();
+    if(slotDelta>1) slotDelta=1;
 
+    uint8_t prevSlot = gSaveLoadSlotNum;
+    gSaveLoadSlotNum = ApplyDelta(prevSlot, slotDelta, 0xFF);
+    if(prevSlot != gSaveLoadSlotNum)
+    {
+        bool atEmptySlot = !SaveSlotExists(gSaveLoadSlotNum);
+        bool slotBehindMeIsEmpty = gSaveLoadSlotNum != 0 && !SaveSlotExists(gSaveLoadSlotNum-1);
+        bool beyondFirstEmptySlot = atEmptySlot && slotBehindMeIsEmpty;
+        if(beyondFirstEmptySlot)
+        {
+            gSaveLoadSlotNum = prevSlot;
+        }
+        else
+        {
+            gSaveLoadConfirmer = 0;
+
+            if(!atEmptySlot)
+            {
+                LoadUserPresetNameOnly(gSaveLoadSlotNum);
+            }
+            else
+            {
+                for(uint8_t i = 0; i < PRESET_NUM_CHARS;i++)
+                {
+                    gLoadedPreset.mName[i] = ' ';
+                }
+            }
+        }
+    }
+
+    bool nameIsEmpty = true;
+    for(uint8_t i = 0; i < PRESET_NUM_CHARS; i++)
+    {
+        if(gSaveNameBuf[i] != ' ')
+        {
+            nameIsEmpty = false;
+            break;
+        }
+    }
+
+    gSaveLoadConfirmer = ApplyDelta(gSaveLoadConfirmer, gRotaryEncoders[BOT_RIGHT_DIAL].ConsumeDelta(), PRESET_NUM_CHARS);
+    if(nameIsEmpty)
+    {
+        gSaveLoadConfirmer = 0;
+    }
+    else if(gSaveLoadConfirmer > 0)
+    {
+        gSaveWriteCursor = 0;
+    }
+
+    // Name editor
+    uint8_t currChar = (uint8_t)gSaveNameBuf[gSaveWriteCursor];
+    int8_t charDelta = gRotaryEncoders[TOP_RIGHT_DIAL].ConsumeDelta();
+
+    if(charDelta < 0)
+    {
+        if(currChar == 'A') currChar = ' ';
+        else if(currChar == 'a') currChar = 'Z';
+        else if(currChar != ' ') currChar += charDelta; 
+    }
+    else if(charDelta > 0)
+    {
+        if(currChar == ' ') currChar = 'A';
+        else if(currChar == 'Z') currChar = 'a';
+        else if(currChar != 'z') currChar += charDelta;
+    }
+
+    gSaveNameBuf[gSaveWriteCursor] = currChar;
+
+    gSaveWriteCursor = ApplyDelta(gSaveWriteCursor, gRotaryEncoders[TOP_LEFT_DIAL].ConsumeDelta(), PRESET_NUM_CHARS-1);
+    if(gSaveWriteCursor > 0) gSaveLoadConfirmer = 0;
+
+    if(gSaveLoadConfirmer == 0)
+    {
+        PlaceScreenCursor(gSaveWriteCursor+5, 0);
+    }
+    else
+    {
+        PlaceScreenCursor(8+gSaveLoadConfirmer, 1);
+    }
+
+    // Top line
+    WriteString(0, 0, "Name", 5);
+    for(uint8_t i = 0; i < 8; i++)
+    {
+        WriteChar(5+i, 0, gSaveNameBuf[i]);
+    }
+
+    // Bot line
+    WriteString(0, 1, "Slot", 5);
+    WriteNumber(5, 1, gSaveLoadSlotNum, 2);
+
+    if(gSaveLoadConfirmer > 0)
+    {
+        WriteString(8, 1, gSaveNameBuf, gSaveLoadConfirmer);
+    }
+    
+    if(gSaveLoadConfirmer >= PRESET_NUM_CHARS)
+    {
+        WriteString(8, 1, "SAVING..", 8);
+        ForceDesiredChars();
+        memcpy(gLoadedPreset.mName, gSaveNameBuf, PRESET_NUM_CHARS);
+        SaveUserPreset(gSaveLoadSlotNum);
+        delay(1000);
+        gSaveLoadConfirmer = 0;
+        gSaveWriteCursor = 0;
+
+        for(uint8_t i = 0; i < PRESET_NUM_CHARS;i++)
+        {
+            gSaveNameBuf[i] = ' ';
+        }
+
+        SetScreenPage(SP_GENERAL_INFO);
+    }
+    else
+    {
+        WriteString(8+gSaveLoadConfirmer, 1, gLoadedPreset.mName+gSaveLoadConfirmer, PRESET_NUM_CHARS-gSaveLoadConfirmer);
+    }
 }
 
 void ExitSynthSave()
 {
-
+    EnableScreenCursor(false);
 }
