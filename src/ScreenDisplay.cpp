@@ -696,24 +696,25 @@ void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param)
         return;
     }
 
+    const int8_t value = param->GetValue();
     switch (param->mParamNum) // Int params
     {
         case ASP_TUNING:
-            WriteString(x, y, TuningToString(param->mValue), 7);
+            WriteString(x, y, TuningToString(value), 7);
             return;
         case ASP_DELAY_MODE:
-            WriteString(x, y, DelayModeToString(param->mValue), 7);
+            WriteString(x, y, DelayModeToString(value), 7);
             return;
         case ASP_SOUND_TYPE:
-            WriteString(x, y, SoundTypeToString(param->mValue), 7);
+            WriteString(x, y, SoundTypeToString(value), 7);
             return;
         case ASP_DCO_WAVE_TYPE_1:
         case ASP_DCO_WAVE_TYPE_2:
         case ASP_LFO_WAVE_TYPE:
-            WriteString(x, y, OscModeToString(param->mValue), 7);
+            WriteString(x, y, OscModeToString(value), 7);
             return;
         case ASP_VCF_MODE:
-            WriteString(x, y, FilterModeToString(param->mValue), 7);
+            WriteString(x, y, FilterModeToString(value), 7);
             return;
         default:
             break;
@@ -737,7 +738,7 @@ void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param)
     }
     else
     {
-        WriteNumber(x + numberOffset, y, param->mValue, 2, true);
+        WriteNumber(x + numberOffset, y, param->GetValue(), 2, true);
     }
 }
 

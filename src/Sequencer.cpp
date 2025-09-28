@@ -32,6 +32,8 @@ SequencerTrack gTracks[NUM_SEQ_TRACKS];
 int8_t gSeqSelectTrack = 0;
 int8_t gSeqSelectStep = 0;
 DigitalButton gSeqEditBtn;
+DigitalButton gSeqMoveStepBtn;
+DigitalButton gSeqDeleteAllBtn;
 
 /// ===================================================================================
 /// SequencerStep
@@ -246,6 +248,12 @@ void InitSequencer()
 /// @brief Update all 4 sequencer tracks.
 void UpdateSequencer()
 {
+	gSeqDeleteAllBtn.UpdateState(gdpLoop4Rec.IsActive());
+	if(gSeqDeleteAllBtn.IsPressed())
+	{
+		gTracks[gSeqSelectTrack] = SequencerTrack();
+		gSeqSelectStep = 0;
+	}
 	gTracks[0].SetPlaying(gdpLoop1.IsActive());
 	gTracks[1].SetPlaying(gdpLoop2.IsActive());
 	gTracks[2].SetPlaying(gdpLoop3.IsActive());
@@ -269,8 +277,10 @@ void UpdateSequencer()
         else
         {
 			SetScreenPage(ScreenPage::SP_SEQUENCER_EDIT);
-			gSeqSelectStep = 0;
+			gSeqSelectTrack = 0;
         }
+
+		gSeqSelectStep = 0;
     }
 
 	if(gCurrScreenPage == ScreenPage::SP_SEQUENCER_EDIT)
@@ -278,6 +288,12 @@ void UpdateSequencer()
 		SequencerTrack* currTrack = GetCurrSequencerTrack();
 
 		int8_t stepDelta = gRotaryEncoders[SEQ_PAGE_SELECT_DIAL_IDX].ConsumeDelta();
+
+		gSeqMoveStepBtn.UpdateState(gdpLoop1Rec.IsActive());
+		if(gSeqMoveStepBtn.IsPressed())
+		{
+			gSeqSelectStep++;
+		}
 		gSeqSelectStep += stepDelta;
 
 		// Clamp

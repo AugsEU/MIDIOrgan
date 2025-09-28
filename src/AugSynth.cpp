@@ -4,6 +4,7 @@
 #include <MidiOutput.h>
 #include <Input/DigitalButton.h>
 #include <ScreenDisplay.h>
+#include <AugSynthPreset.h>
 
 /// ===================================================================================
 /// Globals
@@ -34,50 +35,38 @@ uint8_t gForceIdx = 0;
 /// ===================================================================================
 /// AugSynthParam
 /// ===================================================================================
-AugSynthParam::AugSynthParam(uint8_t paramNum, int8_t value, int8_t minValue, int8_t maxValue)
+AugSynthParam::AugSynthParam(uint8_t paramNum, int8_t maxValue)
 {
     mParamNum = paramNum;
-    mValue = value;
-    mMaxValue = maxValue;
-    mMinValue = minValue;
+    mBound = maxValue;
 }
 
 void AugSynthParam::ApplyDelta(int8_t delta)
 {
-    mValue += delta;
-    if(mValue > mMaxValue)
+    int8_t& value = GetValue();
+    value += delta;
+    int8_t max = GetMaxValue();
+    int8_t min = GetMinValue();
+    if(value > max)
     {
-        mValue = mMaxValue;
+        value = max;
     }
-    else if(mValue < mMinValue)
+    else if(value < min)
     {
-        mValue = mMinValue;
+        value = min;
     }
 }
 
-// void AugSynthParam::WriteToScreenBuff(char* buff)
-// {
-//     int8_t n = mValue;
-//     bool negative = n < 0;
-//     if(negative) n = -n;
-
-//     // Write out 2 digit number
-//     *buff = negative ? '-' : ' ';
-//     buff += 3;
-//     *buff-- = ' ';
-//     *buff-- = '0' + static_cast<char>(n % 10);
-//     n /= 10;
-//     *buff = '0' + static_cast<char>(n % 10);
-// }
-
-float AugSynthParam::GetNormFloatValue()
+float AugSynthParam::GetNormFloatValue(int8_t value)
 {
-    if(mMinValue < 0 && mValue < 0)
+    int8_t max = GetMaxValue();
+    int8_t min = GetMinValue();
+    if(min < 0 && value < 0)
     {
-        return -(float)mValue / (float)mMinValue;
+        return -(float)value / (float)min;
     }
 
-    return (float)mValue / (float)mMaxValue;
+    return (float)value / (float)max;
 }
 
 float AugSynthParam::ScaleFloat(uint8_t paramNum, float fv)
@@ -164,9 +153,35 @@ float AugSynthParam::ScaleFloat(uint8_t paramNum, float fv)
     return fv;
 }
 
+int8_t AugSynthParam::GetMaxValue()
+{
+    if(mBound > 0)
+    {
+        return mBound;
+    }
+
+    return -mBound;
+}
+
+int8_t AugSynthParam::GetMinValue()
+{
+    if(mBound < 0)
+    {
+        return mBound;
+    }
+
+    return 0;
+}
+
+int8_t& AugSynthParam::GetValue()
+{
+    return gLoadedPreset.mValues[mParamNum];
+}
+
 void AugSynthParam::SendValueToBpSynth()
-{       
-    uint8_t uv = (uint8_t)mValue;
+{
+    int8_t value = GetValue();
+    uint8_t uv = (uint8_t)value;
     switch (mParamNum) // Int params
     {
     case ASP_DELAY_MODE: 
@@ -182,12 +197,12 @@ void AugSynthParam::SendValueToBpSynth()
         break;
     }
 
-    float fv = GetNormFloatValue();
+    float fv = GetNormFloatValue(value);
     switch (mParamNum)
     {
     case ASP_DCO_TUNE_1:
 	case ASP_DCO_TUNE_2:
-        switch (mValue)
+        switch (value)
         {
         // Special case: values get rounded to exact ratios for better tuning.
         case 46:  fv = 3.0f; break;
@@ -247,6 +262,8 @@ void InitAugSynth()
     InitSynthPatch();
     BindSynthPages();
     gCurrParamPage = 0;
+
+    LoadFactoryPreset(1);// Leslie organ
 }
 
 #define BIND_SCREEN(_i_, _page_, _param0_, _param1_, _param2_, _param3_) \
@@ -305,55 +322,55 @@ void BindSynthPages()
 
 void InitSynthPatch()
 {
-    // General          Type                                                     Default  min  max
-    gAugSynthParams[ASP_TUNING             ] = AugSynthParam(ASP_TUNING             , 0,  0,   NUM_TUNINGS-1);
-    gAugSynthParams[ASP_DRIVE              ] = AugSynthParam(ASP_DRIVE              , 0,  0,   50);
-    gAugSynthParams[ASP_GAIN               ] = AugSynthParam(ASP_GAIN               , 25, 0,   50);
-    gAugSynthParams[ASP_DELAY_TIME         ] = AugSynthParam(ASP_DELAY_TIME         , 0,  0,   50);
-    gAugSynthParams[ASP_DELAY_FEEDBACK     ] = AugSynthParam(ASP_DELAY_FEEDBACK     , 0,  0,   50);
-    gAugSynthParams[ASP_DELAY_SHEAR        ] = AugSynthParam(ASP_DELAY_SHEAR        , 0,  0,   50);
-    gAugSynthParams[ASP_DELAY_MODE         ] = AugSynthParam(ASP_DELAY_MODE         , 0,  0,   NUM_DELAY_MODES-1);
-    gAugSynthParams[ASP_SOUND_TYPE         ] = AugSynthParam(ASP_SOUND_TYPE         , 0,  0,   NUM_SOUND_TYPES-1);
+    // General          Type                                                        Bound
+    gAugSynthParams[ASP_TUNING             ] = AugSynthParam(ASP_TUNING             , NUM_TUNINGS-1);
+    gAugSynthParams[ASP_DRIVE              ] = AugSynthParam(ASP_DRIVE              , 50);
+    gAugSynthParams[ASP_GAIN               ] = AugSynthParam(ASP_GAIN               , 50);
+    gAugSynthParams[ASP_DELAY_TIME         ] = AugSynthParam(ASP_DELAY_TIME         , 50);
+    gAugSynthParams[ASP_DELAY_FEEDBACK     ] = AugSynthParam(ASP_DELAY_FEEDBACK     , 50);
+    gAugSynthParams[ASP_DELAY_SHEAR        ] = AugSynthParam(ASP_DELAY_SHEAR        , 50);
+    gAugSynthParams[ASP_DELAY_MODE         ] = AugSynthParam(ASP_DELAY_MODE         , NUM_DELAY_MODES-1);
+    gAugSynthParams[ASP_SOUND_TYPE         ] = AugSynthParam(ASP_SOUND_TYPE         , NUM_SOUND_TYPES-1);
  
     // DCO 
-    gAugSynthParams[ASP_DCO_WAVE_TYPE_1    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_1    , 0,  0,   NUM_OSC_MODES-1);
-    gAugSynthParams[ASP_DCO_TUNE_1         ] = AugSynthParam(ASP_DCO_TUNE_1         , 0,  -50, 50);
-    gAugSynthParams[ASP_DCO_VOL_1          ] = AugSynthParam(ASP_DCO_VOL_1          , 50, 0,   50);
-    gAugSynthParams[ASP_DCO_WS_1           ] = AugSynthParam(ASP_DCO_WS_1           , 5,  0,   20);
-    gAugSynthParams[ASP_DCO_WAVE_TYPE_2    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_2    , 0,  0,   NUM_OSC_MODES-1);
-    gAugSynthParams[ASP_DCO_TUNE_2         ] = AugSynthParam(ASP_DCO_TUNE_2         , 0,  -50, 50);
-    gAugSynthParams[ASP_DCO_VOL_2          ] = AugSynthParam(ASP_DCO_VOL_2          , 0,  0,   50);
-    gAugSynthParams[ASP_DCO_WS_2           ] = AugSynthParam(ASP_DCO_WS_2           , 5,  0,   20);
+    gAugSynthParams[ASP_DCO_WAVE_TYPE_1    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_1    , NUM_OSC_MODES-1);
+    gAugSynthParams[ASP_DCO_TUNE_1         ] = AugSynthParam(ASP_DCO_TUNE_1         , -50);
+    gAugSynthParams[ASP_DCO_VOL_1          ] = AugSynthParam(ASP_DCO_VOL_1          , 50);
+    gAugSynthParams[ASP_DCO_WS_1           ] = AugSynthParam(ASP_DCO_WS_1           , 20);
+    gAugSynthParams[ASP_DCO_WAVE_TYPE_2    ] = AugSynthParam(ASP_DCO_WAVE_TYPE_2    , NUM_OSC_MODES-1);
+    gAugSynthParams[ASP_DCO_TUNE_2         ] = AugSynthParam(ASP_DCO_TUNE_2         , -50);
+    gAugSynthParams[ASP_DCO_VOL_2          ] = AugSynthParam(ASP_DCO_VOL_2          , 50);
+    gAugSynthParams[ASP_DCO_WS_2           ] = AugSynthParam(ASP_DCO_WS_2           , 20);
 
     // ENV
-    gAugSynthParams[ASP_ENV_ATTACK1        ] = AugSynthParam(ASP_ENV_ATTACK1        , 5,  0,   99);
-    gAugSynthParams[ASP_ENV_DECAY1         ] = AugSynthParam(ASP_ENV_DECAY1         , 10, 0,   99);
-    gAugSynthParams[ASP_ENV_SUSTAIN1       ] = AugSynthParam(ASP_ENV_SUSTAIN1       , 40, 0,   50);
-    gAugSynthParams[ASP_ENV_RELEASE1       ] = AugSynthParam(ASP_ENV_RELEASE1       , 10, 0,   99);
-    gAugSynthParams[ASP_ENV_ATTACK2        ] = AugSynthParam(ASP_ENV_ATTACK2        , 5,  0,   99);
-    gAugSynthParams[ASP_ENV_DECAY2         ] = AugSynthParam(ASP_ENV_DECAY2         , 10, 0,   99);
-    gAugSynthParams[ASP_ENV_SUSTAIN2       ] = AugSynthParam(ASP_ENV_SUSTAIN2       , 40, 0,   50);
-    gAugSynthParams[ASP_ENV_RELEASE2       ] = AugSynthParam(ASP_ENV_RELEASE2       , 10, 0,   99);
+    gAugSynthParams[ASP_ENV_ATTACK1        ] = AugSynthParam(ASP_ENV_ATTACK1        , 99);
+    gAugSynthParams[ASP_ENV_DECAY1         ] = AugSynthParam(ASP_ENV_DECAY1         , 99);
+    gAugSynthParams[ASP_ENV_SUSTAIN1       ] = AugSynthParam(ASP_ENV_SUSTAIN1       , 50);
+    gAugSynthParams[ASP_ENV_RELEASE1       ] = AugSynthParam(ASP_ENV_RELEASE1       , 99);
+    gAugSynthParams[ASP_ENV_ATTACK2        ] = AugSynthParam(ASP_ENV_ATTACK2        , 99);
+    gAugSynthParams[ASP_ENV_DECAY2         ] = AugSynthParam(ASP_ENV_DECAY2         , 99);
+    gAugSynthParams[ASP_ENV_SUSTAIN2       ] = AugSynthParam(ASP_ENV_SUSTAIN2       , 50);
+    gAugSynthParams[ASP_ENV_RELEASE2       ] = AugSynthParam(ASP_ENV_RELEASE2       , 99);
    
     // VCF   
-    gAugSynthParams[ASP_VCF_CUTOFF         ] = AugSynthParam(ASP_VCF_CUTOFF         , 0,  0,   50);
-    gAugSynthParams[ASP_VCF_RES            ] = AugSynthParam(ASP_VCF_RES            , 0,  0,   20);
-    gAugSynthParams[ASP_VCF_MODE           ] = AugSynthParam(ASP_VCF_MODE           , 0,  0,   NUM_FILTER_MODES-1);
-    gAugSynthParams[ASP_VCF_FOLLOW         ] = AugSynthParam(ASP_VCF_FOLLOW         , 0,  0,   20);
+    gAugSynthParams[ASP_VCF_CUTOFF         ] = AugSynthParam(ASP_VCF_CUTOFF         , 50);
+    gAugSynthParams[ASP_VCF_RES            ] = AugSynthParam(ASP_VCF_RES            , 20);
+    gAugSynthParams[ASP_VCF_MODE           ] = AugSynthParam(ASP_VCF_MODE           , NUM_FILTER_MODES-1);
+    gAugSynthParams[ASP_VCF_FOLLOW         ] = AugSynthParam(ASP_VCF_FOLLOW         , 20);
    
     // LFO   
-    gAugSynthParams[ASP_LFO_RATE           ] = AugSynthParam(ASP_LFO_RATE           , 25, 0,   99);
-    gAugSynthParams[ASP_LFO_WAVE_TYPE      ] = AugSynthParam(ASP_LFO_WAVE_TYPE      , 0,  0,   NUM_LFO_OSC_MODES-1);
-    gAugSynthParams[ASP_LFO_ATTACK         ] = AugSynthParam(ASP_LFO_ATTACK         , 0,  0,   99);
-    gAugSynthParams[ASP_LFO_WOBBLE         ] = AugSynthParam(ASP_LFO_WOBBLE         , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_OSC1_TUNE      ] = AugSynthParam(ASP_LFO_OSC1_TUNE      , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_OSC1_VOLUME    ] = AugSynthParam(ASP_LFO_OSC1_VOLUME    , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_OSC1_SHAPE     ] = AugSynthParam(ASP_LFO_OSC1_SHAPE     , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_OSC2_TUNE      ] = AugSynthParam(ASP_LFO_OSC2_TUNE      , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_OSC2_VOLUME    ] = AugSynthParam(ASP_LFO_OSC2_VOLUME    , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_OSC2_SHAPE     ] = AugSynthParam(ASP_LFO_OSC2_SHAPE     , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_VCF_CUTOFF     ] = AugSynthParam(ASP_LFO_VCF_CUTOFF     , 0,  -20, 20);
-    gAugSynthParams[ASP_LFO_VCF_RES        ] = AugSynthParam(ASP_LFO_VCF_RES        , 0,  -20, 20);
+    gAugSynthParams[ASP_LFO_RATE           ] = AugSynthParam(ASP_LFO_RATE           , 99);
+    gAugSynthParams[ASP_LFO_WAVE_TYPE      ] = AugSynthParam(ASP_LFO_WAVE_TYPE      , NUM_LFO_OSC_MODES-1);
+    gAugSynthParams[ASP_LFO_ATTACK         ] = AugSynthParam(ASP_LFO_ATTACK         , 99);
+    gAugSynthParams[ASP_LFO_WOBBLE         ] = AugSynthParam(ASP_LFO_WOBBLE         , -20);
+    gAugSynthParams[ASP_LFO_OSC1_TUNE      ] = AugSynthParam(ASP_LFO_OSC1_TUNE      , -20);
+    gAugSynthParams[ASP_LFO_OSC1_VOLUME    ] = AugSynthParam(ASP_LFO_OSC1_VOLUME    , -20);
+    gAugSynthParams[ASP_LFO_OSC1_SHAPE     ] = AugSynthParam(ASP_LFO_OSC1_SHAPE     , -20);
+    gAugSynthParams[ASP_LFO_OSC2_TUNE      ] = AugSynthParam(ASP_LFO_OSC2_TUNE      , -20);
+    gAugSynthParams[ASP_LFO_OSC2_VOLUME    ] = AugSynthParam(ASP_LFO_OSC2_VOLUME    , -20);
+    gAugSynthParams[ASP_LFO_OSC2_SHAPE     ] = AugSynthParam(ASP_LFO_OSC2_SHAPE     , -20);
+    gAugSynthParams[ASP_LFO_VCF_CUTOFF     ] = AugSynthParam(ASP_LFO_VCF_CUTOFF     , -20);
+    gAugSynthParams[ASP_LFO_VCF_RES        ] = AugSynthParam(ASP_LFO_VCF_RES        , -20);
 
     SendAllParams();
 } 
@@ -362,7 +379,7 @@ void SendAllParams()
 {
     for(uint8_t i = 0; i < ASP_NUM_PARAMS; i++)
     {
-        gAugSynthParams->SendValueToBpSynth();
+        gAugSynthParams[i].SendValueToBpSynth();
     }
 }
 
@@ -407,12 +424,12 @@ void UpdateAugSynth()
         GetCurrPageParams().UpdateValues();
     }
 
-    AugSynthParam* pForceParam = &gAugSynthParams[gForceIdx++];
+    AugSynthParam* pForceParam = &gAugSynthParams[gForceIdx];
     if(pForceParam != gpPedalInternalParam)
     {
         pForceParam->SendValueToBpSynth();
     }
-    if(gForceIdx >= ASP_NUM_PARAMS)
+    if(gForceIdx++ >= ASP_NUM_PARAMS)
     {
         gForceIdx = 0;
     }

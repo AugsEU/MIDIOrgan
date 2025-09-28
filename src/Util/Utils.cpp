@@ -15,3 +15,12 @@ uint16_t ReadU16FromByteBuff(const uint8_t* buff, uint16_t& idx)
     uint16_t hi = buff[idx++];
     return (hi << 8) | lo;
 }
+
+/// @brief Wait for eeprom to be ready.
+void WaitForEEPROM(uint8_t timeout)
+{
+    while(!eeprom_is_ready() && timeout-->0)
+    {
+        delay(10);//Wait for ready...
+    }
+}
