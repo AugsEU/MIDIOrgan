@@ -18,11 +18,6 @@
 /// Constants
 /// ===================================================================================
 constexpr uint8_t SEQ_PAGE_SELECT_DIAL_IDX = 0;
-constexpr uint8_t SEQ_TOP_LEFT_DIAL = 1;
-constexpr uint8_t SEQ_TOP_RIGHT_DIAL = 2;
-constexpr uint8_t SEQ_BOT_LEFT_DIAL = 3;
-constexpr uint8_t SEQ_BOT_RIGHT_DIAL = 4;
-constexpr uint8_t SEQ_VPIN_SEQUENCER_BTN = 1;
 constexpr uTimeMs SEQ_MAX_RELEASE_TIME = 300;// 300ms
 
 /// ===================================================================================
@@ -31,7 +26,6 @@ constexpr uTimeMs SEQ_MAX_RELEASE_TIME = 300;// 300ms
 SequencerTrack gTracks[NUM_SEQ_TRACKS];
 int8_t gSeqSelectTrack = 0;
 int8_t gSeqSelectStep = 0;
-DigitalButton gSeqEditBtn;
 DigitalButton gSeqMoveStepBtn;
 DigitalButton gSeqDeleteAllBtn;
 
@@ -263,25 +257,6 @@ void UpdateSequencer()
 	{
 		gTracks[i].UpdateTrack();
 	}
-	
-	
-
-	bool pressed = gVirtualMuxPins[SEQ_VPIN_SEQUENCER_BTN].IsActive();
-    gSeqEditBtn.UpdateState(pressed);
-    if(gSeqEditBtn.IsPressed())
-    {
-        if(gCurrScreenPage == ScreenPage::SP_SEQUENCER_EDIT)
-        {
-			SetScreenPage(ScreenPage::SP_GENERAL_INFO);
-        }
-        else
-        {
-			SetScreenPage(ScreenPage::SP_SEQUENCER_EDIT);
-			gSeqSelectTrack = 0;
-        }
-
-		gSeqSelectStep = 0;
-    }
 
 	if(gCurrScreenPage == ScreenPage::SP_SEQUENCER_EDIT)
 	{
@@ -316,18 +291,18 @@ void UpdateSequencer()
 void UpdateTrackEdit(SequencerTrack* currTrack)
 {
 	EnableScreenCursor(false);
-	currTrack->mSubDiv = ApplyDelta(currTrack->mSubDiv, gRotaryEncoders[SEQ_TOP_RIGHT_DIAL].ConsumeDelta(), 16);
+	currTrack->mSubDiv = ApplyDelta(currTrack->mSubDiv, gRotaryEncoders[TOP_RIGHT_DIAL].ConsumeDelta(), 16);
 	if(currTrack->mSubDiv == 0)
 	{
 		currTrack->mSubDiv = 1;
 	}
-	currTrack->mMidiCh = ApplyDelta(currTrack->mMidiCh, gRotaryEncoders[SEQ_BOT_LEFT_DIAL].ConsumeDelta(), 16);
-	currTrack->mNumSteps = ApplyDelta(currTrack->mNumSteps, gRotaryEncoders[SEQ_BOT_RIGHT_DIAL].ConsumeDelta(), TRACK_STEP_MAX);
+	currTrack->mMidiCh = ApplyDelta(currTrack->mMidiCh, gRotaryEncoders[BOT_LEFT_DIAL].ConsumeDelta(), 16);
+	currTrack->mNumSteps = ApplyDelta(currTrack->mNumSteps, gRotaryEncoders[BOT_RIGHT_DIAL].ConsumeDelta(), TRACK_STEP_MAX);
 	if(currTrack->mNumSteps == 0)
 	{
 		currTrack->mNumSteps = 1;
 	}
-	gSeqSelectTrack = ApplyDelta(gSeqSelectTrack, gRotaryEncoders[SEQ_TOP_LEFT_DIAL].ConsumeDelta(), 3);
+	gSeqSelectTrack = ApplyDelta(gSeqSelectTrack, gRotaryEncoders[TOP_LEFT_DIAL].ConsumeDelta(), 3);
 }
 
 
@@ -342,13 +317,13 @@ void UpdateStepEdit(SequencerTrack* currTrack)
 	EnableScreenCursor(true);
 	PlaceScreenCursor(subPageIdx, 0);
 
-	step->mVelocity = ApplyDelta(step->mVelocity, gRotaryEncoders[SEQ_BOT_LEFT_DIAL].ConsumeDelta(), 99);
-	uint8_t newLen = ApplyDelta(step->GetLength(), gRotaryEncoders[SEQ_BOT_RIGHT_DIAL].ConsumeDelta(), 16);
+	step->mVelocity = ApplyDelta(step->mVelocity, gRotaryEncoders[BOT_LEFT_DIAL].ConsumeDelta(), 99);
+	uint8_t newLen = ApplyDelta(step->GetLength(), gRotaryEncoders[BOT_RIGHT_DIAL].ConsumeDelta(), 16);
 	step->SetLength(newLen);
 
 	// Clear notes
-	if(gRotaryEncoders[SEQ_TOP_LEFT_DIAL].ConsumeDelta() != 0 ||
-		gRotaryEncoders[SEQ_TOP_RIGHT_DIAL].ConsumeDelta() != 0 ||
+	if(gRotaryEncoders[TOP_LEFT_DIAL].ConsumeDelta() != 0 ||
+		gRotaryEncoders[TOP_RIGHT_DIAL].ConsumeDelta() != 0 ||
 		gdpLoopClear.IsActive())
 	{
 		step->ClearNotes();

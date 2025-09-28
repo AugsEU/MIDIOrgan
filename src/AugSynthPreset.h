@@ -23,4 +23,7 @@ void LoadUserPreset(uint8_t idx);
 void LoadUserPresetNameOnly(uint8_t idx);
 void SaveUserPreset(uint8_t idx);
 
+bool LoadSlotExists(uint8_t idx);
+bool SaveSlotExists(uint8_t idx);
+
 #endif // AUG_SYNTH_PRESET_H

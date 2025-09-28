@@ -6,10 +6,13 @@
 
 enum ScreenPage
 {
-    SP_GENERAL_INFO,
     SP_PEDAL_INFO,
     SP_AUG_SYNTH_EDIT,
-    SP_SEQUENCER_EDIT
+    SP_AUG_SYNTH_LOAD,
+    SP_AUG_SYNTH_SAVE,
+    SP_SEQUENCER_EDIT,
+    NUM_SP_SUBSCREENS,
+    SP_GENERAL_INFO = NUM_SP_SUBSCREENS
 };
 
 extern ScreenPage gCurrScreenPage;
@@ -22,4 +25,4 @@ void SetScreenPage(ScreenPage page);
 void PlaceScreenCursor(uint8_t x, uint8_t y);
 void EnableScreenCursor(bool cursor);
 
-#endif // SCREEN_DISPLAY_H]
+#endif // SCREEN_DISPLAY_H

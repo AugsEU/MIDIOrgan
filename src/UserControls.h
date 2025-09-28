@@ -11,6 +11,12 @@ constexpr uint8_t ANALOG_READ_RESOLUTION_BITS = 10;
 constexpr uint16_t ANALOG_MAX_VALUE = 1 << ANALOG_READ_RESOLUTION_BITS;
 constexpr uint8_t NUM_ROTARY_ENCODERS = 7;
 
+constexpr uint8_t TOP_LEFT_DIAL = 1;
+constexpr uint8_t TOP_RIGHT_DIAL = 2;
+constexpr uint8_t BOT_LEFT_DIAL = 3;
+constexpr uint8_t BOT_RIGHT_DIAL = 4;
+constexpr uint8_t PAGE_SELECT_DIAL = 0;
+
 // Global digital pins
 extern StableState<16> gdpArpSelectUpper;
 extern StableState<16> gdpArpSelectLower;

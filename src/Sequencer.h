@@ -7,6 +7,9 @@ constexpr uint8_t STEP_POLYPHONY = 8;
 constexpr uint8_t TRACK_STEP_MAX = 96;
 constexpr uint8_t NUM_SEQ_TRACKS = 4;
 
+extern int8_t gSeqSelectTrack;
+extern int8_t gSeqSelectStep;
+
 struct SequencerStep
 {
 	uint8_t mNotes[STEP_POLYPHONY];

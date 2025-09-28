@@ -92,3 +92,25 @@ void SaveUserPreset(uint8_t idx)
     uintptr_t iptr = idx * sizeof(AugSynthPreset) + EEPROM_PRESET_OFFSET;
     eeprom_write_block(&gLoadedPreset, (void*)iptr, sizeof(AugSynthPreset));
 }
+
+bool LoadSlotExists(uint8_t idx)
+{
+    if(idx < NUM_FACTORY_PRESETS)
+    {
+        return true;
+    }
+    
+    idx -= NUM_FACTORY_PRESETS;
+    return SaveSlotExists(idx);
+}
+
+bool SaveSlotExists(uint8_t idx)
+{
+    uint8_t testName;
+
+    WaitForEEPROM();
+    uintptr_t iptr = idx * sizeof(AugSynthPreset) + EEPROM_PRESET_OFFSET;
+    eeprom_read_block(&testName, (void*)iptr, 1);
+
+    return testName != 0xFF;
+}

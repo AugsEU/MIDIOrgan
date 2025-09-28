@@ -17,7 +17,6 @@ const float ENV_MAX_LENGTH = 30.0f;
 const float ENV_MIN_LENGTH = 0.01f;
 
 constexpr uint8_t VPIN_PAGE_SELECT_SW = 6;
-constexpr uint8_t PAGE_SELECT_DIAL_IDX = 0;
 constexpr uint8_t NUM_SYNTH_PAGES = 11;
 
 
@@ -28,7 +27,6 @@ AugSynthParam gAugSynthParams[ASP_NUM_PARAMS];
 
 uint8_t gCurrParamPage = 0;
 AugSynthPageParams gSynthPages[NUM_SYNTH_PAGES];
-DigitalButton gSynthEditBtn;
 
 uint8_t gForceIdx = 0;
 
@@ -387,25 +385,10 @@ void UpdateAugSynth()
 {
     ScreenPage currPage = gCurrScreenPage;
     bool onSynthEdit = currPage == ScreenPage::SP_AUG_SYNTH_EDIT;
- 
-    // Poll encoders
-    bool pressed = gVirtualMuxPins[VPIN_PAGE_SELECT_SW].IsActive();
-    gSynthEditBtn.UpdateState(pressed);
-    if(gSynthEditBtn.IsPressed())
-    {
-        if(!onSynthEdit)
-        {
-            SetScreenPage(ScreenPage::SP_AUG_SYNTH_EDIT);
-        }
-        else
-        {
-            SetScreenPage(ScreenPage::SP_GENERAL_INFO);
-        }
-    }
 
     if(onSynthEdit)
     {
-        int8_t pageDelta = gRotaryEncoders[PAGE_SELECT_DIAL_IDX].ConsumeDelta();
+        int8_t pageDelta = gRotaryEncoders[PAGE_SELECT_DIAL].ConsumeDelta();
         if(pageDelta < 0)
         {
             if(gCurrParamPage > 0)

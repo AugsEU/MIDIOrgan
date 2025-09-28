@@ -2,11 +2,14 @@
 #include <Wire.h>
 #include <Util/Globals.h>
 #include <Util/TimeInfo.h>
+#include <Util/AugMath.h>
+#include <Input/DigitalButton.h>
 #include <Tempo.h>
 #include <MidiOutput.h>
 #include <AugSynth.h>
 #include <Util/LocStrings.h>
 #include <Sequencer.h>
+#include <AugSynthPreset.h>
 
 struct CharmapInfo
 {
@@ -53,6 +56,12 @@ constexpr uint8_t SCREEN_HEIGHT = 2;
 constexpr uint8_t SCREEN_ADR = 0x27;
 constexpr uint8_t NUM_SCREEN_CHARS = SCREEN_WIDTH * SCREEN_HEIGHT;
 constexpr uint8_t MAX_CHANGE_PER_UPDATE = 3;
+constexpr uint8_t SYNTH_EDIT_BTN = 1;
+constexpr uint8_t SEQ_EDIT_BTN = 0;
+constexpr uint8_t SYNTH_LOAD_BTN = 3;
+constexpr uint8_t SYNTH_SAVE_BTN = 5;
+constexpr uint8_t BACK_BTN = 5;
+constexpr uint8_t SETTINGS_BTN = 6;
 
 // Screen templates
 
@@ -85,17 +94,25 @@ char gDesiredChars[NUM_SCREEN_CHARS]; // Screen is 32 chars
 char gCurrentChars[NUM_SCREEN_CHARS]; // Screen is 32 chars
 CharmapInfo gCharmapInfos[NUM_CHAR_MAPS];
 uint8_t gLoadedCharmaps[MAX_CHAR_STORAGE];
+DigitalButton gEnterScreenBtns[NUM_SP_SUBSCREENS];
 
 ScreenPage gCurrScreenPage;
 uTimeMs gPageChangeTime;
 
 uint8_t gCursorStateCache = 0; // Setting cursor takes a long time. We store this so we only set it when necessary. low 7-bits: cursor index, high bit: cursor enabled.
 
+// Save/Load controls
+uint8_t gSaveWriteCursor = 0;
+uint8_t gSaveLoadSlotNum = 0;
+uint8_t gSaveLoadConfirmer = 0;
+
 /// ===================================================================================
 /// Private functions
 /// ===================================================================================
 void UpdateFreeCharmaps();
 bool PushDesiredChars();
+void ForceDesiredChars();
+void HandleScreenEnterBtn(ScreenPage nextPage, uint8_t btnIdx);
 
 void WriteSpecialChar(uint8_t x, uint8_t y, uint8_t id);
 void SetLines(const char* topLine, const char* botLine);
@@ -114,6 +131,14 @@ void WriteSynthEdit();
 void EnterSeqEdit();
 void WriteSeqEdit();
 void ExitSeqEdit();
+
+void EnterSynthLoad();
+void WriteSynthLoad();
+void ExitSynthLoad();
+
+void EnterSynthSave();
+void WriteSynthSave();
+void ExitSynthSave();
 
 /// ===================================================================================
 /// Init
@@ -149,19 +174,15 @@ void LcdInit()
 /// @brief Turn blinky cursor on or off
 void EnableScreenCursor(bool cursor)
 {
-    bool cursorAlreadyOn = (gCursorStateCache & 0x80) != 0;
-    if(cursor && !cursorAlreadyOn)
+    if(cursor )
     {
         gLcd.cursor_on();
         gLcd.blink_on();
-
-        gCursorStateCache = 0x80;
     }
-    else if(!cursor && cursorAlreadyOn)
+    else
     {
         gLcd.cursor_off();
         gLcd.blink_off();
-        gCursorStateCache = 0x0;
     }
 }
 
@@ -202,6 +223,12 @@ void SetScreenPage(ScreenPage page)
         case SP_SEQUENCER_EDIT:
             ExitSeqEdit();
             break;
+        case SP_AUG_SYNTH_LOAD:
+            ExitSynthLoad();
+            break;
+        case SP_AUG_SYNTH_SAVE:
+            ExitSynthSave();
+            break;
         default:
             break;
         }
@@ -219,6 +246,12 @@ void SetScreenPage(ScreenPage page)
             break;
         case SP_SEQUENCER_EDIT:
             EnterSeqEdit();
+            break;
+        case SP_AUG_SYNTH_LOAD:
+            EnterSynthLoad();
+            break;
+        case SP_AUG_SYNTH_SAVE:
+            EnterSynthSave();
             break;
         }
     }
@@ -253,6 +286,12 @@ void UpdateScreen()
     case ScreenPage::SP_SEQUENCER_EDIT:
         WriteSeqEdit();
         break;
+    case ScreenPage::SP_AUG_SYNTH_LOAD:
+        WriteSynthLoad();
+        break;
+    case ScreenPage::SP_AUG_SYNTH_SAVE:
+        WriteSynthSave();
+        break;
     default:
         break;
     }
@@ -280,13 +319,37 @@ void UpdateScreen()
     // Push desired chars to the screen.
     if(PushDesiredChars())
     {
-
         // Update free slots
         UpdateFreeCharmaps();
     }
 
-    
+    HandleScreenEnterBtn(SP_AUG_SYNTH_EDIT, SYNTH_EDIT_BTN);
+    HandleScreenEnterBtn(SP_SEQUENCER_EDIT, SEQ_EDIT_BTN);
+    HandleScreenEnterBtn(SP_AUG_SYNTH_LOAD, SYNTH_LOAD_BTN);
+    HandleScreenEnterBtn(SP_AUG_SYNTH_SAVE, SYNTH_SAVE_BTN);
+    HandleScreenEnterBtn(SP_GENERAL_INFO, BACK_BTN);
+    // Later: HandleScreenEnterBtn(SP_SETTINGS, SETTINGS_BTN);
+
     return;
+}
+
+/// @brief Check if a button has been pressed to enter a screen.
+void HandleScreenEnterBtn(ScreenPage nextPage, uint8_t btnIdx)
+{
+    bool onNextPage = nextPage == gCurrScreenPage;
+    gEnterScreenBtns[nextPage].UpdateState(gVirtualMuxPins[btnIdx].IsActive());
+    
+    if(gEnterScreenBtns[nextPage].IsPressed())
+    {
+        if(onNextPage)
+        {
+            SetScreenPage(SP_GENERAL_INFO);
+        }
+        else
+        {
+            SetScreenPage(nextPage);
+        }
+    }
 }
 
 /// @brief Push chars in desired buffer to screen if different.
@@ -324,6 +387,32 @@ bool PushDesiredChars()
     }
 
     return numChanged > 0;
+}
+
+/// @brief Force all desired chars to be written to the screen. May take a while.
+void ForceDesiredChars()
+{
+    for(uint8_t y = 0; y < SCREEN_HEIGHT; y++)
+    {
+        uint8_t lastWrittenIdx = 254;
+        for(uint8_t x = 0; x < SCREEN_WIDTH; x++)
+        {
+            uint8_t idx = y * SCREEN_WIDTH + x;
+            char desired = gDesiredChars[idx];
+            if(desired != gCurrentChars[idx])
+            {
+                gCurrentChars[idx] = desired;
+
+                if(lastWrittenIdx + 1 != idx)
+                {
+                    gLcd.setCursor(x, y);
+                }
+
+                lastWrittenIdx = idx;
+                gLcd.print(desired);
+            }
+        }
+    }
 }
 
 
@@ -748,6 +837,8 @@ void WriteSynthParam(uint8_t x, uint8_t y, AugSynthParam* param)
 void EnterSeqEdit()
 {
     PlaceScreenCursor(0, 0);
+    gSeqSelectTrack = 0;
+    gSeqSelectStep = 0;
 }
 
 void WriteSeqEdit()
@@ -822,4 +913,109 @@ void WriteSeqEdit()
 void ExitSeqEdit()
 {
     EnableScreenCursor(false);
+}
+
+
+/// ===================================================================================
+/// Synth Load
+/// ===================================================================================
+void EnterSynthLoad()
+{
+    ClearLine(0);
+    ClearLine(1);
+    gSaveLoadConfirmer = 0;
+    gSaveLoadSlotNum = 0;
+    LoadFactoryPresetNameOnly(0);
+    EnableScreenCursor(true);
+}
+
+void WriteSynthLoad()
+{
+    int8_t slotDelta = gRotaryEncoders[BOT_LEFT_DIAL].ConsumeDelta();
+    slotDelta += gRotaryEncoders[PAGE_SELECT_DIAL].ConsumeDelta();
+    uint8_t prevSlot = gSaveLoadSlotNum;
+    gSaveLoadSlotNum = ApplyDelta(prevSlot, slotDelta, 0xFF);
+    if(prevSlot != gSaveLoadSlotNum)
+    {
+        if(!LoadSlotExists(gSaveLoadSlotNum))
+        {
+            gSaveLoadSlotNum = prevSlot;
+        }
+        else
+        {
+            gSaveLoadConfirmer = 0;
+            if(gSaveLoadSlotNum < NUM_FACTORY_PRESETS)
+            {
+                LoadFactoryPresetNameOnly(gSaveLoadSlotNum);
+            }
+            else
+            {
+                LoadUserPresetNameOnly(gSaveLoadSlotNum-NUM_FACTORY_PRESETS);
+            }
+        }
+    }
+
+    gSaveLoadConfirmer = ApplyDelta(gSaveLoadConfirmer, gRotaryEncoders[BOT_RIGHT_DIAL].ConsumeDelta(), 3);
+
+    uint8_t userIdx = gSaveLoadSlotNum - NUM_FACTORY_PRESETS;
+    WriteString(0, 0, "Name", 5);
+
+    for(uint8_t i = 0; i < 8; i++)
+    {
+        WriteChar(5+i, 0, gLoadedPreset.mName[i]);
+    }
+    
+    WriteString(0, 1, "Slot", 5);
+    if(gSaveLoadSlotNum < NUM_FACTORY_PRESETS)
+    {
+        WriteChar(5, 1, 'F');
+        WriteNumber(6, 1, gSaveLoadSlotNum+1, 1);
+    }
+    else
+    {
+        WriteNumber(5, 1, userIdx+1, 2);
+    }
+    
+    WriteString(9, 1, "Load",7);
+    PlaceScreenCursor(12+gSaveLoadConfirmer, 1);
+    WriteString(13, 1, "ing", gSaveLoadConfirmer);
+
+    if(gSaveLoadConfirmer >= 3)
+    {
+        ForceDesiredChars();
+        if(gSaveLoadSlotNum < NUM_FACTORY_PRESETS)
+        {
+            LoadFactoryPreset(gSaveLoadSlotNum);
+        }
+        else
+        {
+            LoadUserPreset(userIdx);
+        }
+
+        delay(500);
+        gSaveLoadConfirmer = 0;
+    }
+}
+
+void ExitSynthLoad()
+{
+    EnableScreenCursor(false);
+}
+
+/// ===================================================================================
+/// Synth Save
+/// ===================================================================================
+void EnterSynthSave()
+{
+
+}
+
+void WriteSynthSave()
+{
+
+}
+
+void ExitSynthSave()
+{
+
 }
