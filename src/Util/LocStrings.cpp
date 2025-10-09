@@ -261,7 +261,7 @@ const char* const AugNumberParamToString(uint8_t param)
     case ASP_LFO_VCF_RES:
         return "Res";
     case ASP_VCF_FOLLOW:
-        return "Envl";
+        return "Fllw";
     case ASP_LFO_RATE:
         return "Rate";
     case ASP_LFO_WOBBLE:

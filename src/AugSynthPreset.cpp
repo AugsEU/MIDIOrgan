@@ -9,7 +9,7 @@
 constexpr AugSynthPreset gFactoryPresets[NUM_FACTORY_PRESETS] PROGMEM = {
     {{'I','n','i','t',' ',' ',' ',' ',}, {
         TUNING_12TET, 0, 20,            // Tune Drive Gain 
-        10, 0, 0, DELAY_MODE_OFF,       // Delay: Time Fbck Shear Mode
+        10, 10, 0, DELAY_MODE_OFF,      // Delay: Time Fbck Shear Mode
         OSC_MODE_SINE, 0, 50, 5,        // Osc1: Wave Tune Vol Shape
         OSC_MODE_SINE, 0, 0, 5,         // Osc2: Wave Tune Vol Shape
         2, 10, 40, 5,                   // Env1: A D S R
